@@ -8,6 +8,7 @@ export interface SmtpSendOptions {
   to: string;
   subject: string;
   html: string;
+  plainText?: string;
   from?: string;
   fromName?: string;
 }
@@ -95,21 +96,46 @@ export async function sendEmailViaSmtp(options: SmtpSendOptions): Promise<{ succ
     // 5. DATA command
     await executeCommand('DATA', '354');
 
-    // 6. Build MIME body (Base64 UTF-8)
+    // 6. Build High-Deliverability MIME body (multipart/alternative)
+    function wrapBase64(str: string): string {
+      return str.match(/.{1,76}/g)?.join('\r\n') || str;
+    }
+
     const encodedSubject = `=?UTF-8?B?${btoa(unescape(encodeURIComponent(options.subject)))}?=`;
-    const encodedHtml = btoa(unescape(encodeURIComponent(options.html)));
+    const boundary = `----=_Part_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const messageId = `<ignitron.${Date.now()}.${Math.random().toString(36).substring(2, 8)}@gmail.com>`;
     const dateHeader = new Date().toUTCString();
+
+    const plainText = options.plainText || 'Ignitron 2K26 - Accommodation Booking Confirmed. Please open your pass online to access check-in details and your QR code.';
+    const encodedPlain = wrapBase64(btoa(unescape(encodeURIComponent(plainText))));
+    const encodedHtml = wrapBase64(btoa(unescape(encodeURIComponent(options.html))));
 
     const emailPayload = [
       `From: "${senderName}" <${senderEmail}>`,
       `To: <${options.to}>`,
+      `Reply-To: <${senderEmail}>`,
       `Subject: ${encodedSubject}`,
       `Date: ${dateHeader}`,
+      `Message-ID: ${messageId}`,
       `MIME-Version: 1.0`,
+      `X-Priority: 3 (Normal)`,
+      `Importance: Normal`,
+      `Content-Type: multipart/alternative; boundary="${boundary}"`,
+      ``,
+      `--${boundary}`,
+      `Content-Type: text/plain; charset=UTF-8`,
+      `Content-Transfer-Encoding: base64`,
+      ``,
+      encodedPlain,
+      ``,
+      `--${boundary}`,
       `Content-Type: text/html; charset=UTF-8`,
       `Content-Transfer-Encoding: base64`,
       ``,
       encodedHtml,
+      ``,
+      `--${boundary}--`,
+      ``,
       `.`,
     ].join('\r\n');
 

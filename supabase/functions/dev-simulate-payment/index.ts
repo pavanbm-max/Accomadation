@@ -17,7 +17,7 @@ serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
 
-  const isDevEnabled = (Deno.env.get('DEV_SIMULATE_PAYMENTS') || 'true') === 'true';
+  const isDevEnabled = Deno.env.get('DEV_SIMULATE_PAYMENTS') === 'true';
 
   if (req.method === 'GET') {
     return jsonResponse({
@@ -35,13 +35,14 @@ serve(async (req: Request) => {
       return errorResponse('Scan token is required');
     }
 
+    const cleanToken = scanToken.trim();
     const supabase = getAdminClient();
 
     const { data: reg, error: fetchErr } = await supabase
       .from('registrations')
       .select('*')
-      .eq('scan_token', scanToken)
-      .single();
+      .or(`scan_token.eq.${cleanToken},reference_id.eq.${cleanToken}`)
+      .maybeSingle();
 
     if (fetchErr || !reg) {
       return errorResponse('Registration not found', 404);
@@ -76,8 +77,7 @@ serve(async (req: Request) => {
       const scanUrl = `${origin}/scan/${reg.scan_token}`;
 
       const htmlBody = buildConfirmationEmailHtml({
-        hostelName: 'Hostel Accommodation',
-        hostelName: 'Ignitron Hostel Accommodation',
+        hostelName: 'Ignitron Hostel Accommodation Desk',
         fullName: reg.full_name,
         firstName: (reg.full_name || '').split(' ')[0],
         referenceId: reg.reference_id,
@@ -93,7 +93,7 @@ serve(async (req: Request) => {
         paymentMethod: 'UPI (Simulated)',
         refundPolicyText: settings?.refund_policy_text || 'Standard hostel refund policy applies.',
         supportEmail: 'pavan.b.m1598@gmail.com',
-        supportPhone: '+91 98765 43210',
+        supportPhone: '+91 99807 45913',
       });
 
       const subject = `Booking confirmed – ${reg.reference_id}`;
@@ -126,6 +126,90 @@ serve(async (req: Request) => {
           .from('email_outbox')
           .update({ status: 'sent' })
           .eq('id', outboxItem.id);
+      }
+
+      // Check if this registration belongs to a TeamBatch and settle all teammates
+      const batchMatch = reg.admin_note?.match(/\[TeamBatch:([^\]]+)\]/);
+      const batchId = batchMatch ? batchMatch[1] : null;
+
+      if (batchId) {
+        const { data: teammates } = await supabase
+          .from('registrations')
+          .select('*')
+          .ilike('admin_note', `%[TeamBatch:${batchId}]%`);
+
+        if (teammates && teammates.length > 0) {
+          for (const tm of teammates) {
+            if (tm.id !== reg.id) {
+              await supabase
+                .from('registrations')
+                .update({
+                  payment_status: 'paid',
+                  payment_method: 'team_shared',
+                  transaction_id: mockTxnId,
+                  paid_at: paidAt,
+                })
+                .eq('id', tm.id);
+
+              const tmScanUrl = `${origin}/confirmation/${tm.scan_token}`;
+              const tmSubject = `[Ignitron 2K26] Accommodation Confirmed - Stay Pass Ref: ${tm.reference_id}`;
+              const tmHtml = buildConfirmationEmailHtml({
+                hostelName: 'Ignitron Hostel Accommodation Desk',
+                fullName: tm.full_name,
+                firstName: (tm.full_name || '').split(' ')[0],
+                referenceId: tm.reference_id,
+                scanUrl: tmScanUrl,
+                checkInDate: tm.check_in_date,
+                checkOutDate: tm.check_out_date,
+                nights: Number(tm.nights || 1),
+                ratePerNight: Number(tm.rate_per_night || 300),
+                flatFee: Number(tm.flat_fee || 0),
+                amountPaid: Number(tm.amount),
+                transactionId: mockTxnId,
+                paidDate: new Date(paidAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+                paymentMethod: 'UPI (Team Booking)',
+                refundPolicyText: settings?.refund_policy_text || 'Standard hostel refund policy applies.',
+                supportEmail: 'pavan.b.m1598@gmail.com',
+                supportPhone: '+91 99807 45913',
+              });
+
+              // Record in outbox
+              const { data: tmOutbox } = await supabase
+                .from('email_outbox')
+                .upsert({
+                  registration_id: tm.id,
+                  to_email: tm.email,
+                  subject: tmSubject,
+                  body_html: tmHtml,
+                  type: 'confirmation',
+                  status: 'queued',
+                })
+                .select('id')
+                .single();
+
+              // Await SMTP dispatch to teammate with brief delay to avoid rate limits
+              try {
+                await new Promise((resolve) => setTimeout(resolve, 600));
+                const tmSmtpRes = await sendEmailViaSmtp({
+                  to: tm.email,
+                  subject: tmSubject,
+                  html: tmHtml,
+                  from: 'pavan.b.m1598@gmail.com',
+                  fromName: 'Ignitron Accommodation Desk',
+                });
+
+                if (tmSmtpRes.success && tmOutbox?.id) {
+                  await supabase
+                    .from('email_outbox')
+                    .update({ status: 'sent' })
+                    .eq('id', tmOutbox.id);
+                }
+              } catch (tmErr) {
+                console.warn(`Teammate email dispatch notice for ${tm.email}:`, tmErr);
+              }
+            }
+          }
+        }
       }
 
       return jsonResponse({

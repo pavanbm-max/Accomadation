@@ -10,7 +10,7 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { getAdminClient } from '../_shared/supabaseClient.ts';
 import { sendEmailViaSmtp } from '../_shared/smtp.ts';
-import { buildConfirmationEmailHtml } from '../_shared/emailTemplate.ts';
+import { buildConfirmationEmailHtml, buildConfirmationEmailText } from '../_shared/emailTemplate.ts';
 
 serve(async (req: Request) => {
   const cors = handleCors(req);
@@ -21,7 +21,7 @@ serve(async (req: Request) => {
       return errorResponse('Method not allowed', 405);
     }
 
-    const { scanToken, emailId, forceResend } = await req.json();
+    const { scanToken, emailId, forceResend, sendToTeam } = await req.json();
     if (!scanToken && !emailId) {
       return errorResponse('Scan token, reference ID, or emailId is required.');
     }
@@ -106,8 +106,8 @@ serve(async (req: Request) => {
       ? 'Paid at Desk' 
       : (reg.payment_method === 'simulated_upi' ? 'UPI (Simulated)' : (reg.payment_method || 'Online UPI'));
 
-    const htmlBody = buildConfirmationEmailHtml({
-      hostelName: 'Ignitron Hostel Accommodation',
+    const templatePayload = {
+      hostelName: 'Ignitron Hostel Accommodation Desk',
       fullName: reg.full_name,
       firstName: (reg.full_name || '').split(' ')[0],
       referenceId: reg.reference_id,
@@ -123,11 +123,14 @@ serve(async (req: Request) => {
       paymentMethod: paymentMethodText,
       refundPolicyText: refundPolicyText,
       supportEmail: 'pavan.b.m1598@gmail.com',
-      supportPhone: '+91 98765 43210',
-    });
+      supportPhone: '+91 99807 45913',
+    };
+
+    const htmlBody = buildConfirmationEmailHtml(templatePayload);
+    const plainTextBody = buildConfirmationEmailText(templatePayload);
 
     // 1. Insert/Update email_outbox table
-    const subject = `Booking confirmed – ${reg.reference_id}`;
+    const subject = `[Ignitron 2K26] Accommodation Confirmed - Stay Pass Ref: ${reg.reference_id}`;
     let outboxId = targetOutboxId || existingEmail?.id;
 
     if (outboxId) {
@@ -155,11 +158,12 @@ serve(async (req: Request) => {
       outboxId = newEmail?.id;
     }
 
-    // 2. Send directly via Gmail SMTP to the recipient's filled email!
+    // 2. Send directly via Gmail SMTP with anti-spam multipart headers!
     const smtpResult = await sendEmailViaSmtp({
       to: reg.email,
       subject,
       html: htmlBody,
+      plainText: plainTextBody,
       from: 'pavan.b.m1598@gmail.com',
       fromName: 'Ignitron Accommodation Desk',
     });
@@ -175,6 +179,78 @@ serve(async (req: Request) => {
       console.warn('SMTP delivery deferred or failed:', smtpResult.error);
     }
 
+    // 3. If sendToTeam is true, sequentially dispatch individual passes to all teammates
+    let teamMembersSent = 1;
+    if (sendToTeam) {
+      const batchMatch = reg.admin_note?.match(/\[TeamBatch:([^\]]+)\]/);
+      const batchId = batchMatch ? batchMatch[1] : null;
+
+      if (batchId) {
+        const { data: teammates } = await supabase
+          .from('registrations')
+          .select('*')
+          .ilike('admin_note', `%[TeamBatch:${batchId}]%`);
+
+        if (teammates && teammates.length > 0) {
+          for (const tm of teammates) {
+            if (tm.id !== reg.id && (tm.payment_status === 'paid' || tm.payment_status === 'paid_at_desk')) {
+              try {
+                const tmScanUrl = `${origin}/confirmation/${tm.scan_token}`;
+                const tmPayload = {
+                  ...templatePayload,
+                  fullName: tm.full_name,
+                  firstName: (tm.full_name || '').split(' ')[0],
+                  referenceId: tm.reference_id,
+                  scanUrl: tmScanUrl,
+                };
+                const tmHtml = buildConfirmationEmailHtml(tmPayload);
+                const tmPlain = buildConfirmationEmailText(tmPayload);
+                const tmSubject = `[Ignitron 2K26] Accommodation Confirmed - Stay Pass Ref: ${tm.reference_id}`;
+
+                // Upsert outbox for teammate
+                const { data: tmOutbox } = await supabase
+                  .from('email_outbox')
+                  .upsert({
+                    registration_id: tm.id,
+                    to_email: tm.email,
+                    subject: tmSubject,
+                    body_html: tmHtml,
+                    type: 'confirmation',
+                    status: 'queued',
+                  })
+                  .select('id')
+                  .single();
+
+                // 600ms pause to comply with Gmail SMTP limits
+                await new Promise((r) => setTimeout(r, 600));
+
+                const tmSmtp = await sendEmailViaSmtp({
+                  to: tm.email,
+                  subject: tmSubject,
+                  html: tmHtml,
+                  plainText: tmPlain,
+                  from: 'pavan.b.m1598@gmail.com',
+                  fromName: 'Ignitron Accommodation Desk',
+                });
+
+                if (tmSmtp.success) {
+                  teamMembersSent++;
+                  if (tmOutbox?.id) {
+                    await supabase
+                      .from('email_outbox')
+                      .update({ status: 'sent' })
+                      .eq('id', tmOutbox.id);
+                  }
+                }
+              } catch (tmError) {
+                console.warn(`Error emailing teammate ${tm.email}:`, tmError);
+              }
+            }
+          }
+        }
+      }
+    }
+
     return jsonResponse({
       success: true,
       message: smtpResult.success
@@ -183,6 +259,7 @@ serve(async (req: Request) => {
       emailId: outboxId,
       smtpDelivered: smtpResult.success,
       smtpError: smtpResult.error,
+      teamMembersSent,
     });
   } catch (err: any) {
     console.error('send-confirmation error:', err);

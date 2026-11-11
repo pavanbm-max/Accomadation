@@ -11,7 +11,9 @@ import {
   deleteRegistration,
   updateRegistration,
   createAdminRegistration,
-  toggleCheckIn
+  toggleCheckIn,
+  allotRoom,
+  extractRoomNumber
 } from '../../lib/api';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
@@ -54,6 +56,7 @@ export const AdminRegistrationsPage: React.FC = () => {
   const [manualCollege, setManualCollege] = useState('');
   const [manualGender, setManualGender] = useState('Male');
   const [manualEmergency, setManualEmergency] = useState('');
+  const [manualRoomNumber, setManualRoomNumber] = useState('');
   const [manualCheckIn, setManualCheckIn] = useState(tomorrow);
   const [manualCheckOut, setManualCheckOut] = useState(dayAfter);
   const [manualStatus, setManualStatus] = useState<PaymentStatus>('paid_at_desk');
@@ -71,6 +74,7 @@ export const AdminRegistrationsPage: React.FC = () => {
   const [editGender, setEditGender] = useState('Male');
   const [editCollege, setEditCollege] = useState('');
   const [editEmergency, setEditEmergency] = useState('');
+  const [editRoomNumber, setEditRoomNumber] = useState('');
   const [editCheckIn, setEditCheckIn] = useState('');
   const [editCheckOut, setEditCheckOut] = useState('');
   const [editAmount, setEditAmount] = useState<number>(0);
@@ -112,6 +116,7 @@ export const AdminRegistrationsPage: React.FC = () => {
       'Phone',
       'Email',
       'Gender',
+      'Room Number',
       'College / Organisation',
       'Emergency Contact',
       'Check-in Date',
@@ -133,6 +138,7 @@ export const AdminRegistrationsPage: React.FC = () => {
       r.phone,
       r.email,
       r.gender || '',
+      r.room_number || extractRoomNumber(r.admin_note) || '',
       `"${(r.college_or_organisation || '').replace(/"/g, '""')}"`,
       r.emergency_contact || '',
       r.check_in_date,
@@ -204,6 +210,7 @@ export const AdminRegistrationsPage: React.FC = () => {
     setEditGender(reg.gender || 'Male');
     setEditCollege(reg.college_or_organisation || '');
     setEditEmergency(reg.emergency_contact || '');
+    setEditRoomNumber(reg.room_number || extractRoomNumber(reg.admin_note) || '');
     setEditCheckIn(reg.check_in_date);
     setEditCheckOut(reg.check_out_date);
     setEditAmount(reg.amount);
@@ -235,6 +242,7 @@ export const AdminRegistrationsPage: React.FC = () => {
         gender: editGender,
         college_or_organisation: editCollege.trim(),
         emergency_contact: editEmergency.trim(),
+        room_number: editRoomNumber.trim() || null,
         check_in_date: editCheckIn,
         check_out_date: editCheckOut,
         nights,
@@ -289,6 +297,7 @@ export const AdminRegistrationsPage: React.FC = () => {
         collegeOrOrganisation: manualCollege,
         gender: manualGender,
         emergencyContact: manualEmergency,
+        roomNumber: manualRoomNumber.trim() || undefined,
         checkInDate: manualCheckIn,
         checkOutDate: manualCheckOut,
         paymentStatus: manualStatus,
@@ -305,6 +314,7 @@ export const AdminRegistrationsPage: React.FC = () => {
       setManualEmail('');
       setManualCollege('');
       setManualEmergency('');
+      setManualRoomNumber('');
       setManualAdminNote('');
       setManualCustomAmount('');
       loadData();
@@ -312,6 +322,32 @@ export const AdminRegistrationsPage: React.FC = () => {
       toastError(e.message || 'Failed to create registration.');
     } finally {
       setManualSubmitting(false);
+    }
+  };
+
+  // Allot Room & Notify User
+  const handleAllotRoom = async (id: string, room: string, notifyUser: boolean) => {
+    try {
+      await allotRoom(id, room, notifyUser);
+      toastSuccess(
+        notifyUser
+          ? `Room ${room} allotted and email dispatched to participant!`
+          : `Room ${room} allotted successfully.`
+      );
+      loadData();
+      if (selectedReg && selectedReg.id === id) {
+        setSelectedReg((prev) =>
+          prev
+            ? {
+                ...prev,
+                room_number: room,
+                admin_note: prev.admin_note ? `${prev.admin_note}\n[Room: ${room}]` : `[Room: ${room}]`,
+              }
+            : null
+        );
+      }
+    } catch (e: any) {
+      toastError(e.message || 'Failed to allot room.');
     }
   };
 
@@ -345,6 +381,20 @@ export const AdminRegistrationsPage: React.FC = () => {
           )}
         </div>
       ),
+    },
+    {
+      key: 'room',
+      header: 'Room',
+      render: (r) => {
+        const room = r.room_number || extractRoomNumber(r.admin_note);
+        return room ? (
+          <span className="font-mono text-xs font-bold text-[#5EE5BC] bg-[#5EE5BC]/10 px-2 py-0.5 rounded border border-[#5EE5BC]/30">
+            {room}
+          </span>
+        ) : (
+          <span className="text-xs text-[#64748B] italic">Unallotted</span>
+        );
+      },
     },
     {
       key: 'stay',
@@ -388,7 +438,7 @@ export const AdminRegistrationsPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto text-[#F7FAFC]">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#2B2E32]">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#00F5B8]/15">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold text-[#F7FAFC] font-heading tracking-tight">
             Hostel registrations &amp; allotments
@@ -504,6 +554,7 @@ export const AdminRegistrationsPage: React.FC = () => {
         isOpen={isDrawerOpen}
         onClose={() => setIsDrawerOpen(false)}
         onMarkPaidAtDesk={handleMarkPaidAtDesk}
+        onAllotRoom={handleAllotRoom}
         onEdit={handleOpenEdit}
         onDelete={(r) => setRegToDelete(r)}
         onToggleCheckIn={handleToggleCheckIn}
@@ -573,8 +624,20 @@ export const AdminRegistrationsPage: React.FC = () => {
               >
                 <option value="Male">Male (Boys Hostel)</option>
                 <option value="Female">Female (Girls Hostel)</option>
-                <option value="Other">Other</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#F7FAFC] mb-1">
+                Room allotment (Optional)
+              </label>
+              <input
+                type="text"
+                value={manualRoomNumber}
+                onChange={(e) => setManualRoomNumber(e.target.value)}
+                placeholder="e.g. B-204, G-102"
+                className="w-full text-xs p-2.5 rounded-md border border-[#2B2E32] bg-[#24262A] text-[#F7FAFC] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#5EE5BC] focus:border-[#5EE5BC]"
+              />
             </div>
 
             <div>
@@ -764,8 +827,20 @@ export const AdminRegistrationsPage: React.FC = () => {
               >
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Other">Other</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-[#F7FAFC] mb-1">
+                Room allotment
+              </label>
+              <input
+                type="text"
+                value={editRoomNumber}
+                onChange={(e) => setEditRoomNumber(e.target.value)}
+                placeholder="e.g. B-204"
+                className="w-full text-xs p-2.5 rounded-md border border-[#2B2E32] bg-[#24262A] text-[#F7FAFC] focus:outline-none focus:ring-2 focus:ring-[#5EE5BC]"
+              />
             </div>
 
             <div>

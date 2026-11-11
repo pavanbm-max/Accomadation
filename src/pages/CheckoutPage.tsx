@@ -5,7 +5,10 @@ import { ScreenshotUpload } from '../components/ScreenshotUpload';
 import { 
   getRegistrationPublic, 
   devSimulatePayment, 
-  uploadScreenshot 
+  uploadScreenshot,
+  sendConfirmationEmail,
+  markPaymentLocally,
+  dispatchTeamConfirmationEmails
 } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import type { PublicRegistration } from '../types';
@@ -30,6 +33,13 @@ export const CheckoutPage: React.FC = () => {
     try {
       const data = await getRegistrationPublic(scanToken);
       setRegistration(data);
+
+      // Cache team members if part of a team booking
+      if (data.teamMembers && Array.isArray(data.teamMembers) && data.teamMembers.length > 1) {
+        try {
+          localStorage.setItem(`team_${scanToken}`, JSON.stringify(data.teamMembers));
+        } catch {}
+      }
 
       // If already paid, automatically route to confirmation page!
       if (data.isPaid || data.paymentStatus === 'paid' || data.paymentStatus === 'paid_at_desk') {
@@ -65,20 +75,61 @@ export const CheckoutPage: React.FC = () => {
     };
   }, [fetchDetails]);
 
-  // Payment trigger (Calls mock gateway / razorpay placeholder)
+  // Payment trigger (Handles live gateway or dev simulator)
   const handlePay = async () => {
     if (!registration) return;
     setIsProcessing(true);
 
     try {
-      // In production: opens Razorpay checkout modal with order ID from create-payment-order.
-      // In development/placeholder: simulate gateway call
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      const res = await devSimulatePayment(registration.scanToken, 'success');
+      const isDevSimulation = import.meta.env.VITE_DEV_SIMULATE_PAYMENTS === 'true';
 
-      if (res.status === 'paid') {
-        toastSuccess('Payment successful! Confirmation pass generated.');
-        navigate(`/confirmation/${registration.scanToken}`);
+      if (isDevSimulation) {
+        // Test simulation mode
+        await new Promise((resolve) => setTimeout(resolve, 800));
+        const res = await devSimulatePayment(registration.scanToken, 'success');
+
+        markPaymentLocally(registration.scanToken, {
+          status: 'paid',
+          transactionId: res.transactionId,
+          paidAt: new Date().toISOString(),
+        });
+
+        // Mark all teammates locally and dispatch sequentially in background
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(`team_${registration.scanToken}`);
+            if (raw) {
+              const members = JSON.parse(raw);
+              if (Array.isArray(members)) {
+                members.forEach((m) => {
+                  if (m?.scanToken) {
+                    markPaymentLocally(m.scanToken, {
+                      status: 'paid',
+                      transactionId: res.transactionId,
+                      paidAt: new Date().toISOString(),
+                    });
+                  }
+                });
+              }
+            }
+          } catch {}
+        }
+
+        dispatchTeamConfirmationEmails(registration.scanToken, false).catch(() => {});
+
+        toastSuccess('Payment successful! All stay passes generated.');
+        navigate(`/confirmation/${registration.scanToken}`, { replace: true });
+      } else {
+        // Production mode: Check for Razorpay integration
+        const razorpayKey = import.meta.env.VITE_RAZORPAY_KEY_ID;
+        if (razorpayKey && (window as any).Razorpay) {
+          // Live Razorpay popup can be initiated here with create-payment-order
+          toastInfo('Redirecting to secure gateway...');
+        } else {
+          // Guide user to UPI QR transfer and payment screenshot upload
+          setShowScreenshotModal(true);
+          toastInfo('Please complete UPI payment and upload your screenshot for desk review.');
+        }
       }
     } catch (err: any) {
       console.error('Payment error:', err);
@@ -96,8 +147,37 @@ export const CheckoutPage: React.FC = () => {
       const res = await devSimulatePayment(registration.scanToken, outcome);
       toastInfo(`Simulated gateway outcome: ${outcome.toUpperCase()}`);
 
-      if (res.status === 'paid') {
-        navigate(`/confirmation/${registration.scanToken}`);
+      if (outcome === 'success' || res.status === 'paid') {
+        markPaymentLocally(registration.scanToken, {
+          status: 'paid',
+          transactionId: res.transactionId,
+          paidAt: new Date().toISOString(),
+        });
+
+        if (typeof window !== 'undefined') {
+          try {
+            const raw = localStorage.getItem(`team_${registration.scanToken}`);
+            if (raw) {
+              const members = JSON.parse(raw);
+              if (Array.isArray(members)) {
+                members.forEach((m) => {
+                  if (m?.scanToken) {
+                    markPaymentLocally(m.scanToken, {
+                      status: 'paid',
+                      transactionId: res.transactionId,
+                      paidAt: new Date().toISOString(),
+                    });
+                  }
+                });
+              }
+            }
+          } catch {}
+        }
+
+        dispatchTeamConfirmationEmails(registration.scanToken, false).catch(() => {});
+
+        toastSuccess('Payment confirmed! Opening stay pass...');
+        navigate(`/confirmation/${registration.scanToken}`, { replace: true });
       } else {
         await fetchDetails(true);
       }
@@ -118,10 +198,10 @@ export const CheckoutPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="page-ambient-bg min-h-[calc(100vh-4rem)] bg-[#151618] py-16 px-4">
+      <div className="page-ambient-bg min-h-[calc(100vh-4rem)] bg-transparent py-16 px-4">
         <div className="max-w-xl mx-auto space-y-6">
-          <Skeleton className="h-8 w-44 mx-auto rounded-md bg-[#24262A]" />
-          <Skeleton className="h-96 rounded-lg bg-[#1B1D20]" />
+          <Skeleton className="h-8 w-44 mx-auto rounded-md bg-[#061419]/80" />
+          <Skeleton className="h-96 rounded-lg bg-[#061419]/80" />
         </div>
       </div>
     );
@@ -129,18 +209,18 @@ export const CheckoutPage: React.FC = () => {
 
   if (errorMsg || !registration) {
     return (
-      <div className="page-ambient-bg min-h-[calc(100vh-4rem)] bg-[#151618] py-20 px-4">
+      <div className="page-ambient-bg min-h-[calc(100vh-4rem)] bg-transparent py-20 px-4">
         <div className="max-w-md mx-auto text-center">
-          <div className="p-8 rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] space-y-4">
-            <h3 className="text-xl font-heading font-semibold text-[#F7FAFC] tracking-tight">
+          <div className="p-8 rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)] space-y-4">
+            <h3 className="text-xl font-heading font-semibold text-[#F0FDF9] tracking-tight">
               Registration not found
             </h3>
-            <p className="text-xs font-sans text-[#94A3B8]">
+            <p className="text-xs font-sans text-[#9FB9C1]">
               {errorMsg || 'The checkout link is invalid or may have expired.'}
             </p>
             <a
               href="/"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#5EE5BC] hover:bg-[#48D9AD] text-[#0C1D18] font-semibold text-xs shadow-soft transition-all"
+              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-gradient-to-r from-[#00F5B8] to-[#00C49F] hover:shadow-[0_0_24px_rgba(0,245,184,0.4)] text-[#021713] font-semibold text-xs shadow-soft transition-all"
             >
               <ArrowLeft className="w-4 h-4" />
               <span>Start fresh registration</span>
@@ -152,7 +232,7 @@ export const CheckoutPage: React.FC = () => {
   }
 
   return (
-    <div className="page-ambient-bg relative min-h-[calc(100vh-4rem)] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 bg-[#151618] font-sans text-[#F7FAFC]">
+    <div className="page-ambient-bg relative min-h-[calc(100vh-4rem)] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 bg-transparent font-sans text-[#F0FDF9]">
       <div className="max-w-2xl mx-auto space-y-6">
         <div className="flex items-center justify-between">
           <a
@@ -203,7 +283,7 @@ export const CheckoutPage: React.FC = () => {
           onOpenScreenshotUpload={() => setShowScreenshotModal(true)}
           onRefresh={() => fetchDetails(true)}
           isProcessing={isProcessing}
-          simulationEnabled={true}
+          simulationEnabled={import.meta.env.VITE_DEV_SIMULATE_PAYMENTS === 'true'}
         />
 
         {showScreenshotModal && (

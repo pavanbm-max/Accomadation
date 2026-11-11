@@ -18,6 +18,27 @@ import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { handleCors, jsonResponse, errorResponse } from '../_shared/cors.ts';
 import { getAdminClient } from '../_shared/supabaseClient.ts';
 
+async function verifyHmacSha256(rawBody: string, signature: string | null, secret: string): Promise<boolean> {
+  if (!signature || !secret) return false;
+  try {
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      "raw",
+      encoder.encode(secret),
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    const signatureBuffer = await crypto.subtle.sign("HMAC", key, encoder.encode(rawBody));
+    const hashArray = Array.from(new Uint8Array(signatureBuffer));
+    const computedSignature = hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+    return computedSignature.toLowerCase() === signature.trim().toLowerCase();
+  } catch (e) {
+    console.error("HMAC verification error:", e);
+    return false;
+  }
+}
+
 serve(async (req: Request) => {
   const cors = handleCors(req);
   if (cors) return cors;
@@ -29,12 +50,23 @@ serve(async (req: Request) => {
 
     const rawBody = await req.text();
     const signature = req.headers.get('x-razorpay-signature');
+    const secret = Deno.env.get('RAZORPAY_WEBHOOK_SECRET');
 
-    // TODO: Verify signature:
-    // const secret = Deno.env.get('RAZORPAY_WEBHOOK_SECRET');
-    // if (!verifyRazorpaySignature(rawBody, signature, secret)) {
-    //   return errorResponse('Invalid webhook signature', 400);
-    // }
+    // Cryptographic signature verification:
+    // If webhook secret is configured, strictly enforce signature match.
+    if (secret) {
+      const isValid = await verifyHmacSha256(rawBody, signature, secret);
+      if (!isValid) {
+        console.warn('Rejected payment webhook: Invalid or missing HMAC signature');
+        return errorResponse('Invalid webhook signature', 400);
+      }
+    } else {
+      const isDev = (Deno.env.get('DEV_SIMULATE_PAYMENTS') || 'false') === 'true';
+      if (!isDev) {
+        return errorResponse('Webhook secret is not configured on the server', 500);
+      }
+      console.warn('DEV MODE: Processing webhook without signature verification');
+    }
 
     const payload = JSON.parse(rawBody || '{}');
     console.log('Received payment webhook event:', payload.event || 'test_payload');
@@ -111,6 +143,42 @@ serve(async (req: Request) => {
       type: 'confirmation',
       status: 'queued',
     });
+
+    // If registration belongs to a TeamBatch, also settle all teammates
+    const batchMatch = reg.admin_note?.match(/\[TeamBatch:([^\]]+)\]/);
+    const batchId = batchMatch ? batchMatch[1] : null;
+
+    if (batchId) {
+      const { data: teammates } = await supabase
+        .from('registrations')
+        .select('*')
+        .ilike('admin_note', `%[TeamBatch:${batchId}]%`);
+
+      if (teammates && teammates.length > 0) {
+        for (const tm of teammates) {
+          if (tm.id !== reg.id && tm.payment_status !== 'paid' && tm.payment_status !== 'paid_at_desk') {
+            await supabase
+              .from('registrations')
+              .update({
+                payment_status: 'paid',
+                payment_method: 'team_shared',
+                transaction_id: paymentId,
+                paid_at: paidAt,
+              })
+              .eq('id', tm.id);
+
+            await supabase.from('email_outbox').insert({
+              registration_id: tm.id,
+              to_email: tm.email,
+              subject: `Hostel Accommodation Confirmed - Ref: ${tm.reference_id}`,
+              body_html: `<div>Accommodation Confirmed for ${tm.full_name}. Reference: ${tm.reference_id}</div>`,
+              type: 'confirmation',
+              status: 'queued',
+            });
+          }
+        }
+      }
+    }
 
     return jsonResponse({
       success: true,

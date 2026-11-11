@@ -16,7 +16,8 @@ import {
   Lock,
   ArrowRight,
   Phone,
-  Mail
+  Mail,
+  Users
 } from 'lucide-react';
 
 interface CheckoutCardProps {
@@ -70,9 +71,17 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
   const ringColor = minutes < 5 ? '#AB252C' : minutes < 10 ? '#F59E0B' : '#5EE5BC';
 
   return (
-    <div className="relative w-full max-w-xl mx-auto rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] p-4 sm:p-8 overflow-hidden text-[#F7FAFC]">
+    <div className="relative w-full max-w-xl mx-auto rounded-xl bg-[#061419]/85 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)] p-4 sm:p-8 overflow-hidden text-[#F0FDF9]">
+      {/* Subtle Institutional Watermark */}
+      <img 
+        src="/ignitron-2k26-logo.png" 
+        alt="" 
+        aria-hidden="true" 
+        className="pointer-events-none select-none absolute -right-10 -bottom-6 w-72 opacity-[0.035] object-contain" 
+      />
+
       {/* Header with Logo & Status Badge */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#2B2E32]">
+      <div className="relative z-10 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#00F5B8]/15">
         <LogoPlaceholder size="md" showBadge={true} />
         <div className="flex items-center gap-2">
           <PaymentStatusBadge status={registration.paymentStatus} size="md" />
@@ -80,7 +89,7 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
       </div>
 
       {/* Booking Identifier & Guest info */}
-      <div className="mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#24262A] p-4 rounded-md border border-[#2B2E32]">
+      <div className="relative z-10 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#0B1E26]/90 p-4 rounded-xl border border-[#00F5B8]/15">
         <div>
           <div className="text-xs text-[#94A3B8] font-medium font-sans">
             Booking reference
@@ -94,11 +103,29 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
           <div className="text-xs text-[#94A3B8] font-medium font-sans">
             Guest name
           </div>
-          <div className="font-semibold text-[#F7FAFC] mt-0.5">
-            {registration.fullName}
+          <div className="font-semibold text-[#F7FAFC] mt-0.5 flex items-center sm:justify-end gap-1.5">
+            <span>{registration.fullName}</span>
+            {registration.teamMembersCount && registration.teamMembersCount > 1 && (
+              <span className="text-[10px] font-mono font-bold bg-[#5EE5BC]/15 text-[#5EE5BC] px-1.5 py-0.5 rounded border border-[#5EE5BC]/30">
+                Lead
+              </span>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Team / Group Notice Banner */}
+      {registration.teamMembersCount && registration.teamMembersCount > 1 && (
+        <div className="mt-3 p-3 rounded-md bg-[#5EE5BC]/10 border border-[#5EE5BC]/30 flex items-center justify-between text-xs">
+          <div className="flex items-center gap-2 text-[#5EE5BC] font-semibold">
+            <Users className="w-4 h-4" />
+            <span>Team / Group Accommodation</span>
+          </div>
+          <span className="font-mono font-bold text-[#5EE5BC]">
+            {registration.teamMembersCount} Members Total
+          </span>
+        </div>
+      )}
 
       {/* Stay details itemization */}
       <div className="mt-6 space-y-3">
@@ -115,21 +142,40 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
         <div className="flex items-center justify-between text-sm text-[#94A3B8]">
           <span className="font-medium">Stay Duration</span>
           <span className="font-semibold text-[#F7FAFC] font-mono">
-            {registration.nights} {registration.nights === 1 ? 'night' : 'nights'} × {formatINR(registration.ratePerNight)}
+            {registration.nights} {registration.nights === 1 ? 'night' : 'nights'} × {formatINR(registration.ratePerNight)} {registration.teamMembersCount && registration.teamMembersCount > 1 ? '/ person' : ''}
           </span>
         </div>
+
+        {registration.teamMembersCount && registration.teamMembersCount > 1 && (
+          <div className="flex items-center justify-between text-sm text-[#5EE5BC] bg-[#5EE5BC]/5 px-2.5 py-1.5 rounded border border-[#5EE5BC]/20">
+            <span className="font-medium flex items-center gap-1.5">
+              <Users className="w-3.5 h-3.5" />
+              Team Members Included
+            </span>
+            <span className="font-semibold font-mono">
+              {registration.teamMembersCount} participants ({formatINR((registration.nights * registration.ratePerNight) + registration.flatFee)} each)
+            </span>
+          </div>
+        )}
 
         {registration.flatFee > 0 && (
           <div className="flex items-center justify-between text-sm text-[#94A3B8]">
             <span className="font-medium">Amenities Fee</span>
             <span className="font-semibold text-[#F7FAFC] font-mono">
-              {formatINR(registration.flatFee)}
+              {formatINR(registration.flatFee * (registration.teamMembersCount || 1))}
             </span>
           </div>
         )}
 
         <div className="pt-4 border-t border-[#2B2E32] flex items-center justify-between">
-          <span className="font-semibold text-[#F7FAFC] text-base">Total amount</span>
+          <div>
+            <span className="font-semibold text-[#F7FAFC] text-base block">Total amount to pay</span>
+            {registration.teamMembersCount && registration.teamMembersCount > 1 && (
+              <span className="text-[11px] text-[#94A3B8]">
+                Combined total for all {registration.teamMembersCount} team stay passes
+              </span>
+            )}
+          </div>
           <span className="text-2xl sm:text-3xl font-bold text-[#5EE5BC] font-heading tracking-tight drop-shadow-[0_0_12px_rgba(94,229,188,0.25)]">
             <CountUp value={registration.amount} isCurrency />
           </span>
@@ -298,7 +344,12 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
                 className="btn-primary w-full py-3.5 px-6 font-semibold text-base flex items-center justify-center gap-2.5 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(94,229,188,0.25)] rounded-md"
               >
                 <CreditCard className="w-5 h-5 text-[#0C1D18]" />
-                <span>Pay {formatINR(registration.amount)}</span>
+                <span>
+                  Pay {formatINR(registration.amount)}
+                  {registration.teamMembersCount && registration.teamMembersCount > 1
+                    ? ` (${registration.teamMembersCount} Passes)`
+                    : ''}
+                </span>
               </button>
             </motion.div>
           )}

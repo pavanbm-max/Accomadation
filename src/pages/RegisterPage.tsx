@@ -7,6 +7,7 @@ import {
   getPublicSettings, 
   getPublishedAnnouncements, 
   createRegistration, 
+  createTeamRegistrations,
   lookupPending 
 } from '../lib/api';
 import { useToast } from '../context/ToastContext';
@@ -15,6 +16,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Calendar, 
   User, 
+  Users,
+  UserPlus,
+  Trash2,
   Building, 
   ShieldAlert, 
   ArrowRight, 
@@ -57,6 +61,43 @@ export const RegisterPage: React.FC = () => {
   const [checkInDate, setCheckInDate] = useState(tomorrow);
   const [checkOutDate, setCheckOutDate] = useState(dayAfter);
 
+  // Team Registration State
+  const [isTeamMode, setIsTeamMode] = useState(false);
+  const [teammates, setTeammates] = useState<Array<{
+    id: string;
+    fullName: string;
+    phone: string;
+    email: string;
+    gender: 'Male' | 'Female';
+    emergencyContact: string;
+  }>>([]);
+
+  const addTeammate = () => {
+    setTeammates((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substring(2, 9),
+        fullName: '',
+        phone: '',
+        email: '',
+        gender: 'Male',
+        emergencyContact: '',
+      },
+    ]);
+  };
+
+  const updateTeammate = (index: number, field: string, value: string) => {
+    setTeammates((prev) => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], [field]: value };
+      return updated;
+    });
+  };
+
+  const removeTeammate = (index: number) => {
+    setTeammates((prev) => prev.filter((_, i) => i !== index));
+  };
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [duplicatePaidError, setDuplicatePaidError] = useState<string | null>(null);
 
@@ -90,6 +131,7 @@ export const RegisterPage: React.FC = () => {
 
   // Compute stay duration
   const nights = calculateNights(checkInDate, checkOutDate);
+  const totalMembersCount = isTeamMode ? 1 + teammates.length : 1;
 
   // Check for pending unpaid registration on phone / email blur
   const checkPending = async (identifier: string) => {
@@ -116,10 +158,84 @@ export const RegisterPage: React.FC = () => {
     }
 
     if (!phone.trim() || phone.trim().length < 10) {
-      toastError('Please enter a valid 10-digit mobile number.');
+      toastError('Please enter a valid 10-digit mobile number for Participant 1.');
       return;
     }
 
+    if (!email.trim() || !email.includes('@')) {
+      toastError('Please enter a valid email address for Participant 1.');
+      return;
+    }
+
+    // Team registration flow
+    if (isTeamMode) {
+      for (let i = 0; i < teammates.length; i++) {
+        const tm = teammates[i];
+        if (!tm.fullName.trim()) {
+          toastError(`Please enter full name for Teammate #${i + 2}.`);
+          return;
+        }
+        if (!tm.phone.trim() || tm.phone.trim().length < 10) {
+          toastError(`Please enter a valid 10-digit mobile number for Teammate #${i + 2}.`);
+          return;
+        }
+        if (!tm.email.trim() || !tm.email.includes('@')) {
+          toastError(`Please enter a valid email address for Teammate #${i + 2}.`);
+          return;
+        }
+      }
+
+      setIsSubmitting(true);
+      try {
+        const allMembers = [
+          {
+            fullName: fullName.trim(),
+            phone: phone.trim(),
+            email: email.trim().toLowerCase(),
+            gender,
+            emergencyContact: emergencyContact.trim(),
+          },
+          ...teammates.map((tm) => ({
+            fullName: tm.fullName.trim(),
+            phone: tm.phone.trim(),
+            email: tm.email.trim().toLowerCase(),
+            gender: tm.gender,
+            emergencyContact: tm.emergencyContact.trim(),
+          })),
+        ];
+
+        const res = await createTeamRegistrations({
+          checkInDate,
+          checkOutDate,
+          collegeOrOrganisation: collegeOrOrg.trim(),
+          members: allMembers,
+        });
+
+        // Store all teammate tickets in localStorage so each can be viewed / printed
+        if (res.allRegistrations && res.allRegistrations.length > 0) {
+          const passPayload = JSON.stringify(res.allRegistrations);
+          res.allRegistrations.forEach((r) => {
+            localStorage.setItem(`team_${r.scanToken}`, passPayload);
+          });
+          localStorage.setItem(`team_${res.primaryRegistration.scanToken}`, passPayload);
+        }
+
+        if (res.primaryRegistration.paymentStatus === 'paid') {
+          toastSuccess(`Team accommodation registered for ${allMembers.length} participants!`);
+          navigate(`/confirmation/${res.primaryRegistration.scanToken}`);
+        } else {
+          navigate(`/checkout/${res.primaryRegistration.scanToken}`);
+        }
+      } catch (err: any) {
+        console.error('Team registration error:', err);
+        toastError(err.message || 'Failed to submit team registration.');
+      } finally {
+        setIsSubmitting(false);
+      }
+      return;
+    }
+
+    // Individual registration flow
     setIsSubmitting(true);
     try {
       const res = await createRegistration({
@@ -152,7 +268,7 @@ export const RegisterPage: React.FC = () => {
   };
 
   return (
-    <div className="page-ambient-bg relative min-h-[calc(100vh-4rem)] py-8 sm:py-14 px-4 sm:px-6 lg:px-8 bg-[#151618] text-[#F7FAFC]">
+    <div className="page-ambient-bg relative min-h-[calc(100vh-4rem)] py-8 sm:py-14 px-4 sm:px-6 lg:px-8 bg-transparent text-[#F0FDF9]">
       <div className="max-w-4xl mx-auto space-y-8">
         
         {/* Published Announcements Banner */}
@@ -175,28 +291,38 @@ export const RegisterPage: React.FC = () => {
 
         {/* Editorial Hero Header with Prominent Official Logo */}
         <div className="text-center space-y-5">
-          {/* Official Emblem Showcase */}
+          {/* Official University & Fest Identity Showcase */}
           <div className="flex justify-center">
             <div className="relative group">
-              <div className="absolute -inset-3 bg-gradient-to-r from-[#5EE5BC]/20 via-[#00B8FF]/20 to-[#5EE5BC]/20 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition duration-500" />
-              <div className="relative flex items-center gap-3.5 sm:gap-4 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-[#1B1D20]/95 border border-[#2B2E32] shadow-[0_0_32px_rgba(94,229,188,0.18)]">
+              <div className="absolute -inset-3 bg-gradient-to-r from-[#00F5B8]/20 via-[#38BDF8]/20 to-[#00F5B8]/20 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition duration-500" />
+              <div className="relative flex items-center gap-4 sm:gap-6 px-5 sm:px-8 py-3 sm:py-4 rounded-2xl bg-[#061419]/90 backdrop-blur-xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.65)]">
+                {/* GM University Authentic Gold Crest */}
                 <img 
-                  src="/ignitron-emblem-aqua.png" 
-                  alt="Ignitron Emblem" 
-                  className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_0_14px_rgba(94,229,188,0.35)] transition-transform duration-200 group-hover:scale-105" 
+                  src="/gmu-logo.png" 
+                  alt="GM University" 
+                  className="h-12 sm:h-16 w-auto object-contain drop-shadow-[0_2px_14px_rgba(0,0,0,0.7)] transition-transform duration-200 group-hover:scale-105" 
+                  loading="eager"
                 />
+                
+                {/* Refined Divider */}
+                <div className="h-10 sm:h-12 w-px bg-white/20" />
+                
+                {/* IGNITRON 2K26 Authentic Wordmark */}
                 <div className="flex flex-col text-left">
-                  <div className="flex items-center gap-2">
-                    <span className="font-heading font-black tracking-tight text-[#F7FAFC] text-lg sm:text-2xl leading-none">
-                      IGNITRON
+                  <img 
+                    src="/ignitron-2k26-logo.png" 
+                    alt="IGNITRON 2K26" 
+                    className="h-8 sm:h-11 w-auto object-contain drop-shadow-[0_2px_16px_rgba(0,0,0,0.8)] transition-transform duration-200 group-hover:scale-105" 
+                    loading="eager"
+                  />
+                  <div className="flex items-center gap-2 mt-1.5">
+                    <span className="tracking-wider uppercase font-semibold text-[#9FB9C1] text-[10px] sm:text-xs">
+                      Campus Accommodation Portal
                     </span>
-                    <span className="font-mono font-bold tracking-wider uppercase bg-[#5EE5BC]/15 text-[#5EE5BC] px-2 py-0.5 rounded border border-[#5EE5BC]/30 text-[10px] sm:text-xs shadow-[0_0_8px_rgba(94,229,188,0.2)]">
-                      2K26
+                    <span className="font-mono font-bold tracking-wider uppercase bg-[#00F5B8]/15 text-[#00F5B8] px-2 py-0.5 rounded border border-[#00F5B8]/30 text-[9px] sm:text-[10px] shadow-[0_0_8px_rgba(0,245,184,0.2)]">
+                      OFFICIAL
                     </span>
                   </div>
-                  <span className="tracking-wider uppercase font-semibold text-[#94A3B8] text-[10px] sm:text-xs mt-1">
-                    Campus Accommodation Desk
-                  </span>
                 </div>
               </div>
             </div>
@@ -289,16 +415,97 @@ export const RegisterPage: React.FC = () => {
           </div>
         )}
 
-        {/* REGISTRATION FORM CARD */}
-        <TiltCard className="p-4 sm:p-8 md:p-10">
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="text-left border-b border-[#2B2E32] pb-4">
-              <h2 className="text-xl font-bold text-[#F7FAFC] font-heading tracking-tight">
-                Participant details
-              </h2>
-              <p className="text-xs text-[#94A3B8] mt-1">
-                All accommodation is allocated individually per participant.
-              </p>
+        {/* REGISTRATION FORM CARD WITH ELEGANT INSTITUTIONAL WATERMARK */}
+        <TiltCard className="p-4 sm:p-8 md:p-10 relative overflow-hidden">
+          {/* Subtle Faded GM University Crest Watermark (Top Right) */}
+          <img 
+            src="/gmu-logo.png" 
+            alt="" 
+            aria-hidden="true" 
+            className="pointer-events-none select-none absolute -right-12 -top-12 w-64 sm:w-80 opacity-[0.045] object-contain" 
+          />
+          {/* Subtle Faded IGNITRON 2K26 Wordmark Watermark (Bottom Left) */}
+          <img 
+            src="/ignitron-2k26-logo.png" 
+            alt="" 
+            aria-hidden="true" 
+            className="pointer-events-none select-none absolute -left-16 -bottom-8 w-72 sm:w-96 opacity-[0.04] object-contain" 
+          />
+
+          <form onSubmit={handleSubmit} className="relative z-10 space-y-6">
+            
+            {/* Registration Mode Selector: Individual vs Team */}
+            <div className="space-y-2 pb-2">
+              <label className="block text-xs font-semibold text-[#94A3B8] uppercase tracking-wider">
+                Select Booking Type
+              </label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-1.5 rounded-xl bg-[#040E12]/80 backdrop-blur-md border border-[#00F5B8]/20">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTeamMode(false);
+                    setTeammates([]);
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                    !isTeamMode
+                      ? 'bg-gradient-to-r from-[#00F5B8] to-[#00C49F] text-[#021713] shadow-[0_0_24px_rgba(0,245,184,0.35)] font-semibold'
+                      : 'text-[#9FB9C1] hover:text-[#F0FDF9] hover:bg-[#061419]/70'
+                  }`}
+                >
+                  <div className={`p-2 rounded-md ${!isTeamMode ? 'bg-[#021713]/15 text-[#021713]' : 'bg-[#0B1E26] text-[#00F5B8]'}`}>
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-bold">Individual Stay</div>
+                    <div className={`text-[11px] ${!isTeamMode ? 'text-[#021713]/80' : 'text-[#5A7E88]'}`}>
+                      Single pass &amp; QR code
+                    </div>
+                  </div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsTeamMode(true);
+                    if (teammates.length === 0) {
+                      addTeammate();
+                    }
+                  }}
+                  className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                    isTeamMode
+                      ? 'bg-gradient-to-r from-[#00F5B8] to-[#00C49F] text-[#021713] shadow-[0_0_24px_rgba(0,245,184,0.35)] font-semibold'
+                      : 'text-[#9FB9C1] hover:text-[#F0FDF9] hover:bg-[#061419]/70'
+                  }`}
+                >
+                  <div className={`p-2 rounded-md ${isTeamMode ? 'bg-[#021713]/15 text-[#021713]' : 'bg-[#0B1E26] text-[#00F5B8]'}`}>
+                    <Users className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="text-xs sm:text-sm font-bold">Team / Group Stay</div>
+                    <div className={`text-[11px] ${isTeamMode ? 'text-[#021713]/80' : 'text-[#5A7E88]'}`}>
+                      Separate passes &amp; QRs for each member
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            <div className="text-left border-b border-[#2B2E32] pb-4 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-[#F7FAFC] font-heading tracking-tight flex items-center gap-2">
+                  <span>{isTeamMode ? 'Participant 1 (Team Leader)' : 'Participant details'}</span>
+                  {isTeamMode && (
+                    <span className="font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#5EE5BC]/15 text-[#5EE5BC] border border-[#5EE5BC]/30">
+                      Primary Contact
+                    </span>
+                  )}
+                </h2>
+                <p className="text-xs text-[#94A3B8] mt-1">
+                  {isTeamMode 
+                    ? 'Fill the team leader details first. You can add as many teammates as you want below.'
+                    : 'All accommodation is allocated individually per participant.'}
+                </p>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -357,7 +564,7 @@ export const RegisterPage: React.FC = () => {
                 />
               </div>
 
-              {/* Gender (For hostel block segregation) */}
+              {/* Gender (For hostel block segregation: strictly Male or Female) */}
               <div className="space-y-1.5">
                 <label className="block text-[13px] font-medium text-[#F7FAFC]">
                   Gender (for block allotment) *
@@ -369,8 +576,6 @@ export const RegisterPage: React.FC = () => {
                 >
                   <option value="Male">Male (Boys Hostel Block)</option>
                   <option value="Female">Female (Girls Hostel Block)</option>
-                  <option value="Other">Other</option>
-                  <option value="Prefer not to say">Prefer not to say</option>
                 </select>
               </div>
 
@@ -410,6 +615,169 @@ export const RegisterPage: React.FC = () => {
                 </div>
               </div>
             </div>
+
+            {/* DYNAMIC TEAMMATES SECTION (When Team Mode is Active) */}
+            {isTeamMode && (
+              <div className="pt-6 border-t border-[#2B2E32] space-y-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-base font-bold text-[#F7FAFC] flex items-center gap-2 font-heading tracking-tight">
+                      <Users className="w-4 h-4 text-[#5EE5BC]" />
+                      <span>Teammates ({teammates.length})</span>
+                    </h3>
+                    <p className="text-xs text-[#94A3B8] mt-0.5">
+                      Each teammate gets their own unique Reference ID, personal QR code, and email notification.
+                    </p>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={addTeammate}
+                    className="btn-secondary inline-flex items-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-md border border-[#5EE5BC]/40 text-[#5EE5BC] hover:bg-[#5EE5BC]/10"
+                  >
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>+ Add Teammate</span>
+                  </button>
+                </div>
+
+                {teammates.length === 0 ? (
+                  <div className="p-5 rounded-lg border border-dashed border-[#2B2E32] bg-[#151618] text-center space-y-3">
+                    <p className="text-xs text-[#94A3B8]">
+                      No additional teammates added yet. Click below to add your first teammate.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={addTeammate}
+                      className="btn-primary inline-flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-md"
+                    >
+                      <UserPlus className="w-3.5 h-3.5" />
+                      <span>+ Add Teammate</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {teammates.map((tm, index) => (
+                      <div
+                        key={tm.id}
+                        className="p-4 sm:p-5 rounded-lg bg-[#151618] border border-[#2B2E32] relative space-y-4"
+                      >
+                        <div className="flex items-center justify-between pb-3 border-b border-[#2B2E32]">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 h-6 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] border border-[#5EE5BC]/30 flex items-center justify-center text-xs font-bold font-mono">
+                              {index + 2}
+                            </span>
+                            <span className="text-xs font-bold text-[#F7FAFC]">
+                              Teammate #{index + 2}
+                            </span>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => removeTeammate(index)}
+                            className="inline-flex items-center gap-1 text-xs text-[#F87171] hover:text-[#EF4444] p-1.5 rounded hover:bg-[#EF4444]/10 transition-colors"
+                            title="Remove teammate"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span className="text-[11px] font-medium">Remove</span>
+                          </button>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          {/* Teammate Name */}
+                          <div className="sm:col-span-2 space-y-1">
+                            <label className="block text-xs font-medium text-[#F7FAFC]">
+                              Full name *
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              value={tm.fullName}
+                              onChange={(e) => updateTeammate(index, 'fullName', e.target.value)}
+                              placeholder="Teammate full name"
+                              className="w-full h-10 px-3 rounded-md border border-[#2B2E32] bg-[#1B1D20] text-[#F7FAFC] placeholder:text-[#64748B] focus:border-[#5EE5BC] focus:ring-2 focus:ring-[#5EE5BC] focus:outline-none text-xs transition-all"
+                            />
+                          </div>
+
+                          {/* Teammate Phone */}
+                          <div className="space-y-1">
+                            <label className="block text-xs font-medium text-[#F7FAFC]">
+                              Mobile number *
+                            </label>
+                            <div className="relative">
+                              <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-[11px] font-semibold text-[#94A3B8] select-none">
+                                +91
+                              </span>
+                              <input
+                                type="tel"
+                                required
+                                value={tm.phone}
+                                onChange={(e) => updateTeammate(index, 'phone', e.target.value)}
+                                placeholder="98401 00000"
+                                className="w-full h-10 pl-11 pr-3 rounded-md border border-[#2B2E32] bg-[#1B1D20] text-[#F7FAFC] placeholder:text-[#64748B] focus:border-[#5EE5BC] focus:ring-2 focus:ring-[#5EE5BC] focus:outline-none text-xs transition-all"
+                              />
+                            </div>
+                          </div>
+
+                          {/* Teammate Email */}
+                          <div className="space-y-1">
+                            <label className="block text-xs font-medium text-[#F7FAFC]">
+                              Email address (for pass &amp; QR) *
+                            </label>
+                            <input
+                              type="email"
+                              required
+                              value={tm.email}
+                              onChange={(e) => updateTeammate(index, 'email', e.target.value)}
+                              placeholder="teammate@college.ac.in"
+                              className="w-full h-10 px-3 rounded-md border border-[#2B2E32] bg-[#1B1D20] text-[#F7FAFC] placeholder:text-[#64748B] focus:border-[#5EE5BC] focus:ring-2 focus:ring-[#5EE5BC] focus:outline-none text-xs transition-all"
+                            />
+                          </div>
+
+                          {/* Teammate Gender */}
+                          <div className="space-y-1">
+                            <label className="block text-xs font-medium text-[#F7FAFC]">
+                              Gender (hostel block) *
+                            </label>
+                            <select
+                              value={tm.gender}
+                              onChange={(e) => updateTeammate(index, 'gender', e.target.value as 'Male' | 'Female')}
+                              className="w-full h-10 px-3 rounded-md border border-[#2B2E32] bg-[#1B1D20] text-[#F7FAFC] focus:border-[#5EE5BC] focus:ring-2 focus:ring-[#5EE5BC] focus:outline-none text-xs transition-all"
+                            >
+                              <option value="Male">Male (Boys Hostel Block)</option>
+                              <option value="Female">Female (Girls Hostel Block)</option>
+                            </select>
+                          </div>
+
+                          {/* Teammate Emergency Contact */}
+                          <div className="space-y-1">
+                            <label className="block text-xs font-medium text-[#F7FAFC]">
+                              Emergency contact
+                            </label>
+                            <input
+                              type="text"
+                              value={tm.emergencyContact}
+                              onChange={(e) => updateTeammate(index, 'emergencyContact', e.target.value)}
+                              placeholder="Parent / Guardian phone"
+                              className="w-full h-10 px-3 rounded-md border border-[#2B2E32] bg-[#1B1D20] text-[#F7FAFC] placeholder:text-[#64748B] focus:border-[#5EE5BC] focus:ring-2 focus:ring-[#5EE5BC] focus:outline-none text-xs transition-all"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Bottom Add Teammate Button */}
+                    <button
+                      type="button"
+                      onClick={addTeammate}
+                      className="w-full py-3 px-4 rounded-lg border border-dashed border-[#5EE5BC]/40 hover:border-[#5EE5BC] bg-[#5EE5BC]/5 hover:bg-[#5EE5BC]/10 text-[#5EE5BC] text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      <span>+ Add Another Teammate (Member #{teammates.length + 2})</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Check-in & Check-out Dates */}
             <div className="pt-5 border-t border-[#2B2E32] space-y-4">
@@ -454,6 +822,7 @@ export const RegisterPage: React.FC = () => {
               nights={nights}
               ratePerNight={settings.per_night_fee}
               flatFee={settings.flat_fee}
+              membersCount={totalMembersCount}
               checkInDate={checkInDate}
               checkOutDate={checkOutDate}
               paymentsEnabled={settings.payments_enabled}
@@ -470,7 +839,11 @@ export const RegisterPage: React.FC = () => {
                   {isSubmitting
                     ? 'Creating registration...'
                     : settings.payments_enabled
-                    ? 'Continue to payment'
+                    ? isTeamMode
+                      ? `Continue to payment (${totalMembersCount} participants)`
+                      : 'Continue to payment'
+                    : isTeamMode
+                    ? `Confirm team stay (${totalMembersCount} participants)`
                     : 'Confirm stay (free allotment)'}
                 </span>
                 <ArrowRight className="w-4 h-4" />
@@ -560,29 +933,32 @@ export const RegisterPage: React.FC = () => {
         </div>
 
         {/* REFINED BRAND FOOTER */}
-        <footer className="pt-6 pb-8 border-t border-[#2B2E32] text-center space-y-4">
-          <div className="flex items-center justify-center gap-3">
+        <footer className="pt-6 pb-8 border-t border-[#00F5B8]/15 text-center space-y-4">
+          <div className="flex items-center justify-center gap-3 sm:gap-4 flex-wrap">
             <img
-              src="/ignitron-emblem-aqua.png"
-              alt="Ignitron Emblem"
-              className="h-8 w-auto object-contain drop-shadow-[0_0_12px_rgba(94,229,188,0.25)]"
+              src="/gmu-logo.png"
+              alt="GM University"
+              className="h-10 w-auto object-contain drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
             />
-            <span className="font-heading font-black tracking-tight text-[#F7FAFC] text-lg">
-              IGNITRON 2K26
-            </span>
-            <span className="font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#5EE5BC]/15 text-[#5EE5BC] border border-[#5EE5BC]/30">
+            <div className="h-6 w-px bg-white/20" />
+            <img
+              src="/ignitron-2k26-logo.png"
+              alt="IGNITRON 2K26"
+              className="h-7 w-auto object-contain drop-shadow-[0_2px_10px_rgba(0,0,0,0.6)]"
+            />
+            <span className="font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#00F5B8]/15 text-[#00F5B8] border border-[#00F5B8]/30">
               Hostel Desk
             </span>
           </div>
 
-          <p className="text-xs text-[#94A3B8] max-w-md mx-auto leading-relaxed">
-            National Level Technical Symposium &amp; Festival · For inquiries contact <a href="mailto:pavan.b.m1598@gmail.com" className="text-[#5EE5BC] hover:underline">pavan.b.m1598@gmail.com</a> or call <a href="tel:+919980745913" className="text-[#5EE5BC] hover:underline">+91 99807 45913</a>.
+          <p className="text-xs text-[#9FB9C1] max-w-md mx-auto leading-relaxed">
+            GM University, Davangere · IGNITRON 2K26 National Technical Fest · For inquiries contact <a href="mailto:pavan.b.m1598@gmail.com" className="text-[#00F5B8] hover:underline">pavan.b.m1598@gmail.com</a> or call <a href="tel:+919980745913" className="text-[#00F5B8] hover:underline">+91 99807 45913</a>.
           </p>
 
-          <div className="text-[11px] text-[#64748B] flex items-center justify-center gap-2">
-            <span>© 2026 Ignitron Festival. All rights reserved.</span>
+          <div className="text-[11px] text-[#5A7E88] flex items-center justify-center gap-2">
+            <span>© 2026 GM University &amp; Ignitron. All rights reserved.</span>
             <span>·</span>
-            <Link to="/admin/login" className="hover:text-[#5EE5BC] transition-colors">
+            <Link to="/admin/login" className="hover:text-[#00F5B8] transition-colors">
               Staff Portal
             </Link>
           </div>

@@ -49,6 +49,7 @@ export interface Registration {
   gender?: string;
   college_or_organisation?: string;
   emergency_contact?: string;
+  room_number?: string | null;
   check_in_date: string;
   check_out_date: string;
   nights: number;
@@ -79,6 +80,7 @@ export interface PublicRegistration {
   phone: string;
   gender?: string;
   emergencyContact?: string;
+  roomNumber?: string | null;
   collegeOrOrganisation?: string;
   checkInDate: string;
   checkOutDate: string;
@@ -98,6 +100,23 @@ export interface PublicRegistration {
   screenshotReviewReason?: string | null;
   refundPolicyText?: string;
   isPaid: boolean;
+  teamMembersCount?: number;
+  isTeamLeader?: boolean;
+  teamBatchId?: string | null;
+  adminNote?: string | null;
+  teamMembers?: Array<{
+    id: string;
+    referenceId: string;
+    scanToken: string;
+    fullName: string;
+    email: string;
+    phone: string;
+    gender?: string;
+    roomNumber?: string | null;
+    amount?: number;
+    paymentStatus?: PaymentStatus;
+    isPaid?: boolean;
+  }>;
 }
 
 export interface Announcement {

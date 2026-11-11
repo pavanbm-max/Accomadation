@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Registration } from '../types';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { formatINR, formatDateTime, formatDate } from '../lib/formatters';
+import { extractRoomNumber } from '../lib/api';
 import { 
   X, 
   Store, 
@@ -14,7 +15,10 @@ import {
   Trash2,
   UserCheck,
   UserX,
-  AlertCircle
+  AlertCircle,
+  DoorOpen,
+  Send,
+  Building
 } from 'lucide-react';
 
 interface PaymentDetailsPanelProps {
@@ -25,6 +29,7 @@ interface PaymentDetailsPanelProps {
   onEdit?: (registration: Registration) => void;
   onDelete?: (registration: Registration) => void;
   onToggleCheckIn?: (id: string, currentlyCheckedIn: boolean) => Promise<void>;
+  onAllotRoom?: (id: string, roomNumber: string, notifyUser: boolean) => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -36,6 +41,7 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
   onEdit,
   onDelete,
   onToggleCheckIn,
+  onAllotRoom,
   isAdmin,
 }) => {
   const [showDeskModal, setShowDeskModal] = useState(false);
@@ -44,10 +50,27 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isTogglingCheckIn, setIsTogglingCheckIn] = useState(false);
 
+  // Room Allotment Modal State
+  const [showRoomModal, setShowRoomModal] = useState(false);
+  const [roomNumberInput, setRoomNumberInput] = useState('');
+  const [sendRoomEmail, setSendRoomEmail] = useState(true);
+  const [isAllottingRoom, setIsAllottingRoom] = useState(false);
+
+  const currentRoom = registration 
+    ? (registration.room_number || extractRoomNumber(registration.admin_note) || '')
+    : '';
+
+  useEffect(() => {
+    if (registration) {
+      setRoomNumberInput(registration.room_number || extractRoomNumber(registration.admin_note) || '');
+    }
+  }, [registration]);
+
   if (!isOpen || !registration) return null;
 
   const isPaid = registration.payment_status === 'paid' || registration.payment_status === 'paid_at_desk';
   const isCheckedIn = Boolean(registration.checked_in_at);
+  const blockTitle = registration.gender === 'Female' ? 'Girls Hostel Block' : 'Boys Hostel Block';
 
   const handleDeskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,6 +83,18 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
       setReceiptNo('');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleRoomSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!onAllotRoom) return;
+    setIsAllottingRoom(true);
+    try {
+      await onAllotRoom(registration.id, roomNumberInput.trim(), sendRoomEmail);
+      setShowRoomModal(false);
+    } finally {
+      setIsAllottingRoom(false);
     }
   };
 
@@ -90,7 +125,7 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
                 {registration.reference_id}
               </div>
               <h3 className="text-lg font-bold text-[#F7FAFC] font-heading tracking-tight mt-0.5">
-                Registration &amp; payment details
+                Registration &amp; stay details
               </h3>
             </div>
             <button
@@ -120,6 +155,72 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
               </div>
             </div>
 
+            {/* Room Allotment Section */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-semibold uppercase tracking-wider text-[#94A3B8] flex items-center gap-1.5">
+                  <DoorOpen className="w-3.5 h-3.5 text-[#5EE5BC]" />
+                  <span>Hostel Room Allotment</span>
+                </h4>
+                {isAdmin && onAllotRoom && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoomNumberInput(currentRoom);
+                      setShowRoomModal(true);
+                    }}
+                    className="text-xs text-[#5EE5BC] hover:underline font-semibold"
+                  >
+                    {currentRoom ? 'Change Room' : '+ Allot Room'}
+                  </button>
+                )}
+              </div>
+
+              <div className="p-4 rounded-md bg-[#24262A] border border-[#2B2E32] flex items-center justify-between">
+                <div>
+                  {currentRoom ? (
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-lg font-bold text-[#5EE5BC]">
+                          {currentRoom}
+                        </span>
+                        <span className="text-[10px] font-semibold uppercase px-2 py-0.5 rounded bg-[#5EE5BC]/15 text-[#5EE5BC] border border-[#5EE5BC]/30">
+                          Allotted
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#94A3B8] mt-1 flex items-center gap-1">
+                        <Building className="w-3 h-3 text-[#94A3B8]" />
+                        <span>{blockTitle}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-xs text-[#94A3B8] italic block">
+                        No room allotted yet.
+                      </span>
+                      <span className="text-[11px] text-[#64748B] block mt-0.5">
+                        Target Block: {blockTitle}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                {isAdmin && onAllotRoom && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setRoomNumberInput(currentRoom);
+                      setShowRoomModal(true);
+                    }}
+                    className="btn-secondary py-1.5 px-3 text-xs font-semibold rounded-md flex items-center gap-1.5"
+                  >
+                    <DoorOpen className="w-3.5 h-3.5 text-[#5EE5BC]" />
+                    <span>{currentRoom ? 'Edit' : 'Allot & Notify'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Guest Summary */}
             <div className="space-y-2">
               <h4 className="text-xs font-medium text-[#94A3B8]">Guest information</h4>
@@ -128,12 +229,12 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
                   <User className="w-4 h-4 text-[#5EE5BC]" />
                   <span>{registration.full_name}</span>
                   {registration.gender && (
-                    <span className="text-xs text-[#94A3B8] font-normal">({registration.gender})</span>
+                    <span className="text-xs text-[#94A3B8] font-normal">({registration.gender === 'Female' ? 'Female' : 'Male'})</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2.5 text-[#94A3B8]">
                   <Phone className="w-4 h-4 text-[#94A3B8]" />
-                  <span>{registration.phone}</span>
+                  <span className="font-mono">{registration.phone}</span>
                 </div>
                 <div className="flex items-center gap-2.5 text-[#94A3B8]">
                   <Mail className="w-4 h-4 text-[#94A3B8]" />
@@ -297,6 +398,79 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
           )}
         </div>
       </div>
+
+      {/* ROOM ALLOTMENT MODAL */}
+      {showRoomModal && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
+          <div className="bg-[#1B1D20] rounded-lg p-6 max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-[#2B2E32]">
+            <div className="flex items-center gap-2">
+              <DoorOpen className="w-5 h-5 text-[#5EE5BC]" />
+              <h3 className="text-lg font-bold text-[#F7FAFC] font-heading">
+                Allot Hostel Room
+              </h3>
+            </div>
+            <p className="text-xs text-[#94A3B8] mt-1">
+              Assign a room or bed number to <strong>{registration.full_name}</strong> ({registration.reference_id}).
+            </p>
+
+            <form onSubmit={handleRoomSubmit} className="mt-4 space-y-4">
+              <div>
+                <label className="text-xs font-semibold text-[#F7FAFC] block mb-1">
+                  Hostel Block
+                </label>
+                <div className="p-2.5 rounded-md bg-[#24262A] border border-[#2B2E32] text-xs font-semibold text-[#5EE5BC]">
+                  {blockTitle}
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-semibold text-[#F7FAFC] block mb-1">
+                  Room number / Bed identifier *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={roomNumberInput}
+                  onChange={(e) => setRoomNumberInput(e.target.value)}
+                  placeholder="e.g. Room 204, Block A or Bed 3"
+                  className="w-full text-xs rounded-md border border-[#2B2E32] bg-[#24262A] p-2.5 text-[#F7FAFC] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#5EE5BC] focus:border-[#5EE5BC] font-mono"
+                />
+              </div>
+
+              <div className="flex items-start gap-2 pt-1">
+                <input
+                  type="checkbox"
+                  id="sendRoomEmailCheck"
+                  checked={sendRoomEmail}
+                  onChange={(e) => setSendRoomEmail(e.target.checked)}
+                  className="mt-0.5 rounded border-[#2B2E32] text-[#5EE5BC] focus:ring-[#5EE5BC] bg-[#24262A]"
+                />
+                <label htmlFor="sendRoomEmailCheck" className="text-xs text-[#F7FAFC] select-none cursor-pointer">
+                  Send official room allotment notification email to <strong className="text-[#5EE5BC]">{registration.email}</strong>
+                </label>
+              </div>
+
+              <div className="pt-3 flex gap-2 justify-end border-t border-[#2B2E32]">
+                <button
+                  type="button"
+                  onClick={() => setShowRoomModal(false)}
+                  className="btn-secondary py-2 px-4 text-xs font-medium rounded-md"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isAllottingRoom || !roomNumberInput.trim()}
+                  className="btn-primary py-2 px-4 text-xs font-semibold disabled:opacity-50 rounded-md flex items-center gap-1.5"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  <span>{isAllottingRoom ? 'Saving...' : 'Save & Dispatch Email'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* MARK PAID AT DESK MODAL */}
       {showDeskModal && (

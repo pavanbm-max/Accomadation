@@ -31,8 +31,8 @@ export const AdminLoginPage: React.FC = () => {
   };
 
   return (
-    <div className="page-ambient-bg min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-[#151618] text-[#F7FAFC]">
-      <div className="w-full max-w-md rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-6 sm:p-8 space-y-6">
+    <div className="page-ambient-bg min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-transparent text-[#F0FDF9]">
+      <div className="w-full max-w-md rounded-xl bg-[#061419]/85 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)] p-6 sm:p-8 space-y-6">
         <div className="text-center space-y-3">
           <LogoPlaceholder size="md" variant="stacked" showBadge={true} className="mx-auto" />
           <h2 className="text-xl font-bold text-[#F7FAFC] font-heading tracking-tight pt-1">

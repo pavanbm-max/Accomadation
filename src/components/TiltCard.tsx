@@ -7,10 +7,11 @@ interface TiltCardProps {
 }
 
 /**
- * Clean card container respecting the Aqua Pastel design rules:
- * - 0.5rem (8px) radius
- * - Slate Card surface (#1B1D20) with Hairline border (#2B2E32)
- * - Soft dark elevation shadow with subtle border definition
+ * Frosted Cosmic Glass card container respecting the design-taste-frontend cosmic aurora theme:
+ * - Frosted deep space glass: rgba(6, 20, 25, 0.8) with backdrop-blur-xl
+ * - Hairline emerald aurora border: rgba(0, 245, 184, 0.20)
+ * - Luminous top specular highlight: gradient via #00F5B8/40
+ * - Deep spatial elevation shadow
  */
 export const TiltCard: React.FC<TiltCardProps> = ({
   children,
@@ -18,7 +19,7 @@ export const TiltCard: React.FC<TiltCardProps> = ({
 }) => {
   return (
     <div
-      className={`rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_20px_rgba(0,0,0,0.35)] transition-all duration-200 ${className}`}
+      className={`rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65),0_0_24px_rgba(0,245,184,0.06)] relative overflow-hidden transition-all duration-200 before:absolute before:inset-x-0 before:top-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-[#00F5B8]/40 before:to-transparent ${className}`}
     >
       {children}
     </div>

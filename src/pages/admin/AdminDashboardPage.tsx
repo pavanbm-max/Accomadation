@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CountUp } from '../../components/CountUp';
 import { PaymentStatusBadge } from '../../components/PaymentStatusBadge';
+import { LogoPlaceholder } from '../../components/LogoPlaceholder';
 import { formatINR, formatDate } from '../../lib/formatters';
 import { getDashboardStats, getRegistrations } from '../../lib/api';
 import type { DashboardStats, Registration } from '../../types';
@@ -44,14 +45,18 @@ export const AdminDashboardPage: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto text-[#F7FAFC]">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#2B2E32]">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-[#F7FAFC] font-heading">
-            Hostel operations dashboard
-          </h1>
-          <p className="text-xs sm:text-sm text-[#94A3B8] mt-1">
-            Real-time accommodation allotments, spot collections, and check-in flow metrics.
-          </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#00F5B8]/15">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+          <LogoPlaceholder size="sm" showBadge={false} />
+          <div className="h-8 w-px bg-white/15 hidden sm:block" />
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-[#F0FDF9] font-heading">
+              Hostel operations dashboard
+            </h1>
+            <p className="text-xs sm:text-sm text-[#9FB9C1] mt-1">
+              Real-time accommodation allotments, spot collections, and check-in flow metrics.
+            </p>
+          </div>
         </div>
 
         <div className="flex items-center gap-2">
@@ -75,7 +80,7 @@ export const AdminDashboardPage: React.FC = () => {
       {/* 4 STATS CARDS WITH EMPHASIS */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Total Collected (Only paid & paid_at_desk) - Emphasized Aqua Pastel */}
-        <div className="p-5 rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] relative overflow-hidden">
+        <div className="p-5 rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65),0_0_24px_rgba(0,245,184,0.06)] relative overflow-hidden">
           <div className="flex items-center justify-between text-[#94A3B8] text-xs font-medium">
             <span>Total collected</span>
             <div className="w-8 h-8 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] flex items-center justify-center">
@@ -95,7 +100,7 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Paid Allotments - Aqua Pastel */}
-        <div className="p-5 rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="p-5 rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)]">
           <div className="flex items-center justify-between text-[#94A3B8] text-xs font-medium">
             <span>Confirmed allotments</span>
             <div className="w-8 h-8 rounded-md bg-[#5EE5BC]/10 text-[#5EE5BC] flex items-center justify-center">
@@ -115,7 +120,7 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Unpaid / Failed - Destructive Crimson Accent */}
-        <div className="p-5 rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="p-5 rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)]">
           <div className="flex items-center justify-between text-[#94A3B8] text-xs font-medium">
             <span>Unpaid or expired</span>
             <div className="w-8 h-8 rounded-md bg-[#AB252C]/15 text-[#F87171] flex items-center justify-center">
@@ -135,7 +140,7 @@ export const AdminDashboardPage: React.FC = () => {
         </div>
 
         {/* Under Review Screenshots - Amber Accent */}
-        <div className="p-5 rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <div className="p-5 rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)]">
           <div className="flex items-center justify-between text-[#94A3B8] text-xs font-medium">
             <span>Under review queue</span>
             <div className="w-8 h-8 rounded-md bg-[#F59E0B]/15 text-[#FBBF24] flex items-center justify-center">
@@ -158,7 +163,7 @@ export const AdminDashboardPage: React.FC = () => {
       </div>
 
       {/* RECENT REGISTRATIONS TABLE */}
-      <div className="rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] overflow-hidden p-5 sm:p-6">
+      <div className="rounded-xl bg-[#061419]/80 backdrop-blur-xl border border-[#00F5B8]/20 shadow-[0_8px_32px_rgba(0,0,0,0.65)] overflow-hidden p-5 sm:p-6">
         <div className="flex items-center justify-between pb-4 border-b border-[#2B2E32]">
           <div>
             <h3 className="text-base font-bold text-[#F7FAFC] font-heading tracking-tight">
