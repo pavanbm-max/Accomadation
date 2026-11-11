@@ -110,7 +110,7 @@ export function DataTable<T extends { id: string | number }>({
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="p-3 border-t border-[#2B2E32] flex items-center justify-between text-xs text-[#94A3B8] bg-[#151618]">
+        <div className="p-3 border-t border-[#2B2E32] flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-[#94A3B8] bg-[#151618]">
           <div>
             Showing <span className="font-semibold text-[#F7FAFC]">{startIndex + 1}</span> to{' '}
             <span className="font-semibold text-[#F7FAFC]">{Math.min(startIndex + pageSize, filteredData.length)}</span> of{' '}

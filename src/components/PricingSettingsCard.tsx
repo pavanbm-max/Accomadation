@@ -24,7 +24,6 @@ export const PricingSettingsCard: React.FC<PricingSettingsCardProps> = ({
   const [flatFee, setFlatFee] = useState<number>(settings.flat_fee);
   const [paymentsEnabled, setPaymentsEnabled] = useState<boolean>(settings.payments_enabled);
   const [expiryMinutes, setExpiryMinutes] = useState<number>(settings.expiry_minutes);
-  const [refundPolicyText, setRefundPolicyText] = useState<string>(settings.refund_policy_text || '');
   const [isSaving, setIsSaving] = useState(false);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
@@ -39,7 +38,6 @@ export const PricingSettingsCard: React.FC<PricingSettingsCardProps> = ({
         flat_fee: Number(flatFee),
         payments_enabled: paymentsEnabled,
         expiry_minutes: Number(expiryMinutes),
-        refund_policy_text: refundPolicyText,
       });
       setSavedSuccess(true);
       setTimeout(() => setSavedSuccess(false), 3000);
@@ -59,7 +57,7 @@ export const PricingSettingsCard: React.FC<PricingSettingsCardProps> = ({
             </h3>
           </div>
           <p className="text-xs sm:text-sm text-[#94A3B8] mt-1">
-            Configure default per-night stay tariffs, check-out timeout window, and refund policies.
+            Configure default per-night stay tariffs and check-out timeout window.
           </p>
         </div>
 
@@ -177,24 +175,6 @@ export const PricingSettingsCard: React.FC<PricingSettingsCardProps> = ({
               If disabled, registrations are automatically confirmed at ₹0.
             </p>
           </div>
-        </div>
-
-        {/* Refund Policy Text */}
-        <div>
-          <label className="block text-xs font-semibold text-[#F7FAFC] mb-1">
-            Participant refund policy text
-          </label>
-          <textarea
-            rows={3}
-            disabled={!isAdmin}
-            value={refundPolicyText}
-            onChange={(e) => setRefundPolicyText(e.target.value)}
-            className="w-full p-3 rounded-md border border-[#2B2E32] bg-[#24262A] text-[#F7FAFC] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#5EE5BC] focus:border-[#5EE5BC] text-xs disabled:opacity-60"
-            placeholder="State conditions, time limits, and handling fee deductions..."
-          />
-          <p className="text-xs text-[#94A3B8] mt-1">
-            Displayed on the checkout card and in confirmation emails.
-          </p>
         </div>
 
         {/* Security Note banner (No API keys in the UI) */}

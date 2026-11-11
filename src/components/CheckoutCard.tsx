@@ -14,7 +14,9 @@ import {
   Upload, 
   Calendar,
   Lock,
-  ArrowRight
+  ArrowRight,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 interface CheckoutCardProps {
@@ -68,10 +70,10 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
   const ringColor = minutes < 5 ? '#AB252C' : minutes < 10 ? '#F59E0B' : '#5EE5BC';
 
   return (
-    <div className="relative w-full max-w-xl mx-auto rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] p-6 sm:p-8 overflow-hidden text-[#F7FAFC]">
-      {/* Header with Logo Placeholder & Status Badge */}
+    <div className="relative w-full max-w-xl mx-auto rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] p-4 sm:p-8 overflow-hidden text-[#F7FAFC]">
+      {/* Header with Logo & Status Badge */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-6 border-b border-[#2B2E32]">
-        <LogoPlaceholder size="md" />
+        <LogoPlaceholder size="md" showBadge={true} />
         <div className="flex items-center gap-2">
           <PaymentStatusBadge status={registration.paymentStatus} size="md" />
         </div>
@@ -303,7 +305,7 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
         </AnimatePresence>
       </div>
 
-      {/* Mandatory Golden Rule Note & Refund Policy */}
+      {/* Mandatory Golden Rule Note */}
       <div className="mt-6 pt-5 border-t border-[#2B2E32] space-y-2">
         <div className="flex items-start gap-2 text-xs text-[#94A3B8]">
           <Lock className="w-3.5 h-3.5 text-[#94A3B8] mt-0.5 flex-shrink-0" />
@@ -311,13 +313,18 @@ export const CheckoutCard: React.FC<CheckoutCardProps> = ({
             <strong className="text-[#F7FAFC]">The Golden Rule:</strong> Your accommodation is confirmed only after payment succeeds. Spot is not reserved until payment is captured.
           </span>
         </div>
+      </div>
 
-        {registration.refundPolicyText && (
-          <div className="text-[11px] text-[#94A3B8] bg-[#24262A] p-3 rounded-md border border-[#2B2E32] leading-relaxed">
-            <span className="font-semibold text-[#F7FAFC]">Refund policy: </span>
-            {registration.refundPolicyText}
-          </div>
-        )}
+      {/* Accommodation Desk Support Footer */}
+      <div className="mt-6 pt-4 border-t border-[#2B2E32] flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-[#94A3B8]">
+        <div className="flex items-center gap-2">
+          <Phone className="w-3.5 h-3.5 text-[#5EE5BC]" />
+          <span>Desk Helpline: <a href="tel:+919980745913" className="text-[#F7FAFC] font-mono hover:text-[#5EE5BC] font-semibold">+91 99807 45913</a></span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <Mail className="w-3.5 h-3.5 text-[#5EE5BC]" />
+          <a href="mailto:pavan.b.m1598@gmail.com" className="hover:text-[#5EE5BC] transition-colors truncate">pavan.b.m1598@gmail.com</a>
+        </div>
       </div>
 
       {/* TEST MODE PANEL (DEV ONLY) */}

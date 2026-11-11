@@ -26,7 +26,7 @@ export const OrderSummary: React.FC<OrderSummaryProps> = ({
     <div className="rounded-lg bg-[#1B1D20] border border-[#2B2E32] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.35)] transition-colors">
       <div className="flex items-center justify-between pb-3.5 border-b border-[#2B2E32]">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#F7FAFC]">
-          <Moon className="w-4 h-4 text-[#5EE5BC]" />
+          <img src="/ignitron-emblem-aqua.png" alt="" className="w-4 h-4 object-contain drop-shadow-[0_0_6px_rgba(94,229,188,0.3)]" />
           <span>Stay summary</span>
         </div>
         {safeNights > 0 && (

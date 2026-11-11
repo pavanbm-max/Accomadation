@@ -265,6 +265,7 @@ export async function getRegistrationPublic(scanTokenOrRef: string): Promise<Pub
         phone: rpcData.phone,
         gender: rpcData.gender,
         collegeOrOrganisation: rpcData.college_or_organisation,
+        emergencyContact: rpcData.emergency_contact,
         checkInDate: rpcData.check_in_date,
         checkOutDate: rpcData.check_out_date,
         nights: rpcData.nights,
@@ -326,6 +327,7 @@ export async function getRegistrationPublic(scanTokenOrRef: string): Promise<Pub
     phone: reg.phone,
     gender: reg.gender,
     collegeOrOrganisation: reg.college_or_organisation,
+    emergencyContact: reg.emergency_contact,
     checkInDate: reg.check_in_date,
     checkOutDate: reg.check_out_date,
     nights: reg.nights,
@@ -587,7 +589,11 @@ export async function getRegistrations(options?: {
   let query = supabase.from('registrations').select('*').order('created_at', { ascending: false });
 
   if (options?.status && options.status !== 'all') {
-    query = query.eq('payment_status', options.status);
+    if (options.status === 'checked_in') {
+      query = query.not('checked_in_at', 'is', null);
+    } else {
+      query = query.eq('payment_status', options.status);
+    }
   }
 
   if (options?.search) {
@@ -602,6 +608,129 @@ export async function getRegistrations(options?: {
   }
 
   return data || [];
+}
+
+export async function deleteRegistration(id: string): Promise<void> {
+  const { error } = await supabase.from('registrations').delete().eq('id', id);
+  if (error) {
+    throw new Error(error.message || 'Failed to delete registration record.');
+  }
+}
+
+export async function updateRegistration(
+  id: string,
+  updates: Partial<Registration>
+): Promise<Registration> {
+  const { data, error } = await supabase
+    .from('registrations')
+    .update(updates)
+    .eq('id', id)
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to update registration record.');
+  }
+  return data;
+}
+
+export async function toggleCheckIn(
+  id: string,
+  checkIn: boolean
+): Promise<{ checkedInAt: string | null }> {
+  const checkedInAt = checkIn ? new Date().toISOString() : null;
+  const { error } = await supabase
+    .from('registrations')
+    .update({
+      checked_in_at: checkedInAt,
+    })
+    .eq('id', id);
+
+  if (error) {
+    throw new Error(error.message || 'Failed to update check-in status.');
+  }
+  return { checkedInAt };
+}
+
+export async function createAdminRegistration(payload: {
+  fullName: string;
+  phone: string;
+  email: string;
+  gender?: string;
+  collegeOrOrganisation?: string;
+  emergencyContact?: string;
+  checkInDate: string;
+  checkOutDate: string;
+  paymentStatus: PaymentStatus;
+  paymentMethod?: string;
+  transactionId?: string;
+  adminNote?: string;
+  customAmount?: number;
+}): Promise<Registration> {
+  const checkIn = new Date(payload.checkInDate);
+  const checkOut = new Date(payload.checkOutDate);
+  const nights = Math.max(1, Math.ceil((checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24)));
+
+  const { data: settings } = await supabase
+    .from('settings')
+    .select('per_night_fee, flat_fee')
+    .eq('id', 1)
+    .single();
+
+  const perNightFee = Number(settings?.per_night_fee || 300);
+  const flatFee = Number(settings?.flat_fee || 0);
+  const calculatedAmount = (nights * perNightFee) + flatFee;
+  const finalAmount = payload.customAmount !== undefined ? Number(payload.customAmount) : calculatedAmount;
+
+  const isPaid = payload.paymentStatus === 'paid' || payload.paymentStatus === 'paid_at_desk';
+  const paidAt = isPaid ? new Date().toISOString() : null;
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+  const { data, error } = await supabase
+    .from('registrations')
+    .insert({
+      full_name: payload.fullName.trim(),
+      phone: payload.phone.trim(),
+      email: payload.email.trim().toLowerCase(),
+      gender: payload.gender || 'Not specified',
+      college_or_organisation: payload.collegeOrOrganisation?.trim() || 'Not specified',
+      emergency_contact: payload.emergencyContact?.trim() || 'Not specified',
+      check_in_date: payload.checkInDate,
+      check_out_date: payload.checkOutDate,
+      nights,
+      rate_per_night: perNightFee,
+      flat_fee: flatFee,
+      amount: finalAmount,
+      payment_status: payload.paymentStatus,
+      payment_method: payload.paymentMethod || (payload.paymentStatus === 'paid_at_desk' ? 'cash_desk' : (payload.paymentStatus === 'paid' ? 'admin_spot' : null)),
+      transaction_id: payload.transactionId || (payload.paymentStatus === 'paid_at_desk' ? `DESK-${Date.now()}` : (payload.paymentStatus === 'paid' ? `ADMIN-${Date.now()}` : null)),
+      paid_at: paidAt,
+      admin_note: payload.adminNote?.trim() || null,
+      expires_at: expiresAt,
+    })
+    .select('*')
+    .single();
+
+  if (error || !data) {
+    throw new Error(error?.message || 'Failed to create registration.');
+  }
+
+  if (isPaid) {
+    try {
+      await supabase.from('email_outbox').insert({
+        registration_id: data.id,
+        to_email: data.email,
+        subject: `Accommodation Confirmed - Ref: ${data.reference_id}`,
+        body_html: `<div>Accommodation Confirmed. Reference: ${data.reference_id}, Amount: ₹${data.amount}</div>`,
+        type: 'confirmation',
+        status: 'queued',
+      });
+    } catch (e) {
+      console.warn('Failed to queue confirmation email:', e);
+    }
+  }
+
+  return data;
 }
 
 export async function markPaidAtDesk(

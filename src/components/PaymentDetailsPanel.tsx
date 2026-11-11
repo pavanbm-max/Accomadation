@@ -5,12 +5,16 @@ import { formatINR, formatDateTime, formatDate } from '../lib/formatters';
 import { 
   X, 
   Store, 
-  RotateCcw, 
   User, 
   Phone, 
   Mail, 
   Calendar, 
-  ShieldCheck 
+  ShieldCheck,
+  Edit3,
+  Trash2,
+  UserCheck,
+  UserX,
+  AlertCircle
 } from 'lucide-react';
 
 interface PaymentDetailsPanelProps {
@@ -18,7 +22,9 @@ interface PaymentDetailsPanelProps {
   isOpen: boolean;
   onClose: () => void;
   onMarkPaidAtDesk: (id: string, note: string, receipt?: string) => Promise<void>;
-  onRefund: (id: string, reason: string) => Promise<void>;
+  onEdit?: (registration: Registration) => void;
+  onDelete?: (registration: Registration) => void;
+  onToggleCheckIn?: (id: string, currentlyCheckedIn: boolean) => Promise<void>;
   isAdmin: boolean;
 }
 
@@ -27,21 +33,21 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
   isOpen,
   onClose,
   onMarkPaidAtDesk,
-  onRefund,
+  onEdit,
+  onDelete,
+  onToggleCheckIn,
   isAdmin,
 }) => {
   const [showDeskModal, setShowDeskModal] = useState(false);
   const [deskNote, setDeskNote] = useState('');
   const [receiptNo, setReceiptNo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [showRefundModal, setShowRefundModal] = useState(false);
-  const [refundReason, setRefundReason] = useState('');
+  const [isTogglingCheckIn, setIsTogglingCheckIn] = useState(false);
 
   if (!isOpen || !registration) return null;
 
   const isPaid = registration.payment_status === 'paid' || registration.payment_status === 'paid_at_desk';
-  const isRefunded = registration.payment_status === 'refunded';
+  const isCheckedIn = Boolean(registration.checked_in_at);
 
   const handleDeskSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,16 +63,13 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
     }
   };
 
-  const handleRefundSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!refundReason.trim()) return;
-    setIsSubmitting(true);
+  const handleToggleCheckIn = async () => {
+    if (!onToggleCheckIn) return;
+    setIsTogglingCheckIn(true);
     try {
-      await onRefund(registration.id, refundReason);
-      setShowRefundModal(false);
-      setRefundReason('');
+      await onToggleCheckIn(registration.id, isCheckedIn);
     } finally {
-      setIsSubmitting(false);
+      setIsTogglingCheckIn(false);
     }
   };
 
@@ -136,6 +139,12 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
                   <Mail className="w-4 h-4 text-[#94A3B8]" />
                   <span>{registration.email}</span>
                 </div>
+                {registration.emergency_contact && (
+                  <div className="flex items-center gap-2.5 text-xs text-[#94A3B8]">
+                    <AlertCircle className="w-3.5 h-3.5 text-[#F59E0B]" />
+                    <span>Emergency Contact: <strong className="text-[#F7FAFC] font-mono">{registration.emergency_contact}</strong></span>
+                  </div>
+                )}
                 {registration.college_or_organisation && (
                   <div className="text-xs text-[#94A3B8] border-t border-[#2B2E32] pt-2">
                     Institution: <span className="font-semibold text-[#F7FAFC]">{registration.college_or_organisation}</span>
@@ -197,12 +206,6 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
                     {registration.admin_note}
                   </div>
                 )}
-                {registration.refund_reason && (
-                  <div className="pt-2 border-t border-[#2B2E32] text-[#F87171]">
-                    <span className="font-semibold">Refund reason: </span>
-                    {registration.refund_reason}
-                  </div>
-                )}
               </div>
             </div>
 
@@ -224,26 +227,72 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
 
           {/* Footer Actions (Admin Only) */}
           {isAdmin && (
-            <div className="p-6 border-t border-[#2B2E32] bg-[#151618] space-y-3">
-              {!isPaid && !isRefunded && (
+            <div className="p-5 border-t border-[#2B2E32] bg-[#151618] space-y-2.5">
+              {!isPaid && (
                 <button
                   onClick={() => setShowDeskModal(true)}
-                  className="btn-primary w-full py-2.5 px-4 text-xs font-semibold flex items-center justify-center gap-2 rounded-md"
+                  className="btn-primary w-full py-2 px-3 text-xs font-semibold flex items-center justify-center gap-2 rounded-md"
                 >
                   <Store className="w-4 h-4" />
                   <span>Mark as paid at desk</span>
                 </button>
               )}
 
-              {isPaid && !isRefunded && (
+              {/* Check-in toggle */}
+              {onToggleCheckIn && (
                 <button
-                  onClick={() => setShowRefundModal(true)}
-                  className="w-full py-2.5 px-4 rounded-md bg-[#AB252C]/15 hover:bg-[#AB252C]/25 text-[#F87171] border border-[#AB252C]/30 font-semibold text-xs flex items-center justify-center gap-2 transition-all"
+                  type="button"
+                  disabled={isTogglingCheckIn}
+                  onClick={handleToggleCheckIn}
+                  className={`w-full py-2 px-3 rounded-md text-xs font-semibold flex items-center justify-center gap-2 transition-all ${
+                    isCheckedIn
+                      ? 'bg-[#24262A] text-[#F87171] hover:bg-[#AB252C]/20 border border-[#2B2E32]'
+                      : 'bg-[#5EE5BC]/10 text-[#5EE5BC] hover:bg-[#5EE5BC]/20 border border-[#5EE5BC]/30'
+                  }`}
                 >
-                  <RotateCcw className="w-4 h-4" />
-                  <span>Issue refund</span>
+                  {isCheckedIn ? (
+                    <>
+                      <UserX className="w-4 h-4" />
+                      <span>{isTogglingCheckIn ? 'Updating...' : 'Undo Check-in'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="w-4 h-4" />
+                      <span>{isTogglingCheckIn ? 'Updating...' : 'Check-in Guest'}</span>
+                    </>
+                  )}
                 </button>
               )}
+
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                {onEdit && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onEdit(registration);
+                      onClose();
+                    }}
+                    className="btn-secondary py-2 px-3 text-xs font-semibold flex items-center justify-center gap-1.5 rounded-md"
+                  >
+                    <Edit3 className="w-3.5 h-3.5 text-[#5EE5BC]" />
+                    <span>Edit record</span>
+                  </button>
+                )}
+
+                {onDelete && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onDelete(registration);
+                      onClose();
+                    }}
+                    className="py-2 px-3 rounded-md bg-[#AB252C]/15 hover:bg-[#AB252C]/25 text-[#F87171] border border-[#AB252C]/30 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -301,52 +350,6 @@ export const PaymentDetailsPanel: React.FC<PaymentDetailsPanelProps> = ({
                   className="btn-primary py-2 px-4 text-xs font-semibold disabled:opacity-50 rounded-md"
                 >
                   {isSubmitting ? 'Recording...' : 'Confirm desk payment'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ISSUE REFUND MODAL */}
-      {showRefundModal && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/80 backdrop-blur-xs">
-          <div className="bg-[#1B1D20] rounded-lg p-6 max-w-md w-full shadow-[0_8px_32px_rgba(0,0,0,0.6)] border border-[#2B2E32]">
-            <h3 className="text-lg font-bold text-[#F87171] font-heading">
-              Confirm refund
-            </h3>
-            <p className="text-xs text-[#94A3B8] mt-1">
-              Warning: Once refunded, this booking stops counting in totals and check-in will be permanently blocked.
-            </p>
-            <form onSubmit={handleRefundSubmit} className="mt-4 space-y-3">
-              <div>
-                <label className="text-xs font-semibold text-[#F7FAFC] block mb-1">
-                  Refund reason (required) *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={refundReason}
-                  onChange={(e) => setRefundReason(e.target.value)}
-                  placeholder="e.g. Participant requested cancellation due to family emergency."
-                  className="w-full text-xs rounded-md border border-[#2B2E32] bg-[#24262A] p-3 text-[#F7FAFC] placeholder:text-[#64748B] focus:outline-none focus:ring-2 focus:ring-[#AB252C]"
-                />
-              </div>
-
-              <div className="pt-3 flex gap-2 justify-end">
-                <button
-                  type="button"
-                  onClick={() => setShowRefundModal(false)}
-                  className="btn-secondary py-2 px-4 text-xs font-medium rounded-md"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !refundReason.trim()}
-                  className="py-2 px-4 rounded-md text-xs font-semibold bg-[#AB252C] hover:bg-[#C9323A] text-white shadow-soft disabled:opacity-50 transition-colors"
-                >
-                  {isSubmitting ? 'Processing...' : 'Process refund'}
                 </button>
               </div>
             </form>

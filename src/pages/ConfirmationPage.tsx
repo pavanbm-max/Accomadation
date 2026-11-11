@@ -15,7 +15,9 @@ import {
   Copy, 
   QrCode, 
   MapPin, 
-  AlertOctagon
+  AlertOctagon,
+  Phone,
+  Mail
 } from 'lucide-react';
 
 export const ConfirmationPage: React.FC = () => {
@@ -113,23 +115,23 @@ export const ConfirmationPage: React.FC = () => {
     <div className="page-ambient-bg relative min-h-[calc(100vh-4rem)] py-8 sm:py-12 px-4 sm:px-6 lg:px-8 bg-[#151618] text-[#F7FAFC]">
       <div className="max-w-xl mx-auto space-y-6">
         {/* Stepper (Step 3 active) */}
-        <div className="flex items-center justify-center gap-2 sm:gap-4 text-xs font-medium pb-2">
-          <div className="flex items-center gap-2 text-[#5EE5BC]">
-            <span className="w-6 h-6 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] flex items-center justify-center text-xs font-bold border border-[#5EE5BC]/30">
+        <div className="flex items-center justify-center gap-1.5 sm:gap-4 text-[11px] sm:text-xs font-medium pb-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[#5EE5BC]">
+            <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] flex items-center justify-center text-[10px] sm:text-xs font-bold border border-[#5EE5BC]/30">
               ✓
             </span>
             <span>Details</span>
           </div>
-          <div className="w-8 h-0.5 bg-[#5EE5BC]" />
-          <div className="flex items-center gap-2 text-[#5EE5BC]">
-            <span className="w-6 h-6 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] flex items-center justify-center text-xs font-bold border border-[#5EE5BC]/30">
+          <div className="w-4 sm:w-8 h-0.5 bg-[#5EE5BC]" />
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[#5EE5BC]">
+            <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#5EE5BC]/15 text-[#5EE5BC] flex items-center justify-center text-[10px] sm:text-xs font-bold border border-[#5EE5BC]/30">
               ✓
             </span>
             <span>Payment</span>
           </div>
-          <div className="w-8 h-0.5 bg-[#5EE5BC]" />
-          <div className="flex items-center gap-2 text-[#F7FAFC] font-semibold">
-            <span className="w-6 h-6 rounded-md bg-[#5EE5BC] text-[#0C1D18] flex items-center justify-center text-xs font-bold shadow-[0_0_12px_rgba(94,229,188,0.35)]">
+          <div className="w-4 sm:w-8 h-0.5 bg-[#5EE5BC]" />
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[#F7FAFC] font-semibold">
+            <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#5EE5BC] text-[#0C1D18] flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-[0_0_12px_rgba(94,229,188,0.35)]">
               3
             </span>
             <span>Confirmed</span>
@@ -154,7 +156,7 @@ export const ConfirmationPage: React.FC = () => {
           {/* Ticket Header */}
           <div className="p-6 bg-[#1B1D20] border-b border-[#2B2E32]">
             <div className="flex items-center justify-between">
-              <LogoPlaceholder size="sm" />
+              <LogoPlaceholder size="sm" showBadge={true} />
               <PaymentStatusBadge status={registration.paymentStatus} size="sm" />
             </div>
 
@@ -187,7 +189,14 @@ export const ConfirmationPage: React.FC = () => {
           </div>
 
           {/* Ticket Body with QR Code */}
-          <div className="p-6 bg-[#1B1D20] space-y-6">
+          <div className="relative p-6 bg-[#1B1D20] space-y-6 overflow-hidden">
+            {/* Subtle Circuit Tree Watermark */}
+            <img 
+              src="/ignitron-emblem-aqua.png" 
+              alt="" 
+              aria-hidden="true" 
+              className="pointer-events-none absolute -right-6 -bottom-6 w-48 h-48 opacity-[0.06] object-contain select-none" 
+            />
             <div className="flex flex-col sm:flex-row items-center gap-6 justify-between">
               {/* QR Code Container */}
               <div className="p-3 bg-white rounded-md border border-[#2B2E32] shadow-soft flex flex-col items-center flex-shrink-0">
@@ -238,33 +247,43 @@ export const ConfirmationPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Direct Verification Links */}
-            <div className="flex items-center gap-2 pt-2 border-t border-[#2B2E32]">
+            {/* Action buttons */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-[#2B2E32]">
               <button
                 onClick={handleCopyLink}
                 className="btn-secondary flex-1 py-2.5 px-3 text-xs flex items-center justify-center gap-1.5 rounded-md"
               >
                 <Copy className="w-3.5 h-3.5 text-[#5EE5BC]" />
-                <span>Copy check-in link</span>
+                <span>Copy pass link</span>
               </button>
 
-              <a
-                href={`/scan/${registration.scanToken}`}
-                target="_blank"
-                rel="noopener noreferrer"
+              <button
+                onClick={() => window.print()}
                 className="btn-primary flex-1 py-2.5 px-3 text-xs flex items-center justify-center gap-1.5 rounded-md"
               >
                 <QrCode className="w-3.5 h-3.5" />
-                <span>Desk scanner preview ↗</span>
-              </a>
+                <span>Print / Save pass</span>
+              </button>
             </div>
 
-            {/* Check-in counter notice */}
-            <div className="p-3.5 rounded-md bg-[#24262A] border border-[#2B2E32] flex items-start gap-2.5 text-xs text-[#94A3B8]">
-              <MapPin className="w-4 h-4 text-[#5EE5BC] mt-0.5 flex-shrink-0" />
-              <span>
-                Reception desk opens at 8:00 AM. Show this QR code or mention Reference ID <strong className="font-mono text-[#F7FAFC]">{registration.referenceId}</strong> at the counter for room key allotment.
-              </span>
+            {/* Check-in counter notice & desk support */}
+            <div className="p-4 rounded-md bg-[#24262A] border border-[#2B2E32] space-y-2 text-xs text-[#94A3B8]">
+              <div className="flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-[#5EE5BC] mt-0.5 flex-shrink-0" />
+                <span>
+                  Reception desk opens at 8:00 AM. Show this QR code or mention Reference ID <strong className="font-mono text-[#F7FAFC]">{registration.referenceId}</strong> at the counter for room key allotment.
+                </span>
+              </div>
+              <div className="pt-2 border-t border-[#2B2E32] flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px]">
+                <div className="flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-[#5EE5BC]" />
+                  <span>Desk Helpline: <a href="tel:+919980745913" className="font-mono text-[#F7FAFC] hover:text-[#5EE5BC] font-semibold">+91 99807 45913</a></span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Mail className="w-3.5 h-3.5 text-[#5EE5BC]" />
+                  <a href="mailto:pavan.b.m1598@gmail.com" className="text-[#94A3B8] hover:text-[#5EE5BC]">pavan.b.m1598@gmail.com</a>
+                </div>
+              </div>
             </div>
           </div>
         </TiltCard>

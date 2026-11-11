@@ -100,7 +100,7 @@ export const AdminEmailPreviewPage: React.FC = () => {
             Transactional email outbox (SMTP)
           </h1>
           <p className="text-xs sm:text-sm text-[#94A3B8] mt-1">
-            Sender: <strong className="text-[#5EE5BC]">pavan.b.m1598@gmail.com</strong>. Review queued confirmation and refund emails.
+            Sender: <strong className="text-[#5EE5BC]">pavan.b.m1598@gmail.com</strong>. Review queued confirmation and notification emails.
           </p>
         </div>
 

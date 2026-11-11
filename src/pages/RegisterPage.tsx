@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { OrderSummary } from '../components/OrderSummary';
 import { TiltCard } from '../components/TiltCard';
 import { calculateNights } from '../lib/formatters';
@@ -20,7 +20,12 @@ import {
   ArrowRight, 
   Megaphone,
   CheckCircle2,
-  Clock
+  Clock,
+  Phone,
+  Mail,
+  MapPin,
+  HelpCircle,
+  ShieldCheck
 } from 'lucide-react';
 
 export const RegisterPage: React.FC = () => {
@@ -168,38 +173,60 @@ export const RegisterPage: React.FC = () => {
           </motion.div>
         )}
 
-        {/* Editorial Hero Header */}
-        <div className="text-center space-y-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-[#24262A] border border-[#2B2E32] text-xs font-medium text-[#F7FAFC]">
-            <span className="w-2 h-2 rounded-full bg-[#5EE5BC] shadow-[0_0_8px_#5EE5BC]" />
-            <span>Campus tech fest 2026 · Accommodation desk</span>
+        {/* Editorial Hero Header with Prominent Official Logo */}
+        <div className="text-center space-y-5">
+          {/* Official Emblem Showcase */}
+          <div className="flex justify-center">
+            <div className="relative group">
+              <div className="absolute -inset-3 bg-gradient-to-r from-[#5EE5BC]/20 via-[#00B8FF]/20 to-[#5EE5BC]/20 rounded-3xl blur-xl opacity-75 group-hover:opacity-100 transition duration-500" />
+              <div className="relative flex items-center gap-3.5 sm:gap-4 px-4 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-[#1B1D20]/95 border border-[#2B2E32] shadow-[0_0_32px_rgba(94,229,188,0.18)]">
+                <img 
+                  src="/ignitron-emblem-aqua.png" 
+                  alt="Ignitron Emblem" 
+                  className="h-10 sm:h-12 w-auto object-contain drop-shadow-[0_0_14px_rgba(94,229,188,0.35)] transition-transform duration-200 group-hover:scale-105" 
+                />
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-2">
+                    <span className="font-heading font-black tracking-tight text-[#F7FAFC] text-lg sm:text-2xl leading-none">
+                      IGNITRON
+                    </span>
+                    <span className="font-mono font-bold tracking-wider uppercase bg-[#5EE5BC]/15 text-[#5EE5BC] px-2 py-0.5 rounded border border-[#5EE5BC]/30 text-[10px] sm:text-xs shadow-[0_0_8px_rgba(94,229,188,0.2)]">
+                      2K26
+                    </span>
+                  </div>
+                  <span className="tracking-wider uppercase font-semibold text-[#94A3B8] text-[10px] sm:text-xs mt-1">
+                    Campus Accommodation Desk
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#F7FAFC] font-heading leading-tight">
+          <h1 className="text-2xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-[#F7FAFC] font-heading leading-tight">
             Hostel stay registration
           </h1>
-          <p className="text-sm sm:text-base text-[#94A3B8] max-w-xl mx-auto leading-relaxed">
-            Reserve your campus accommodation. Verified stay allotment is generated immediately upon payment.
+          <p className="text-xs sm:text-base text-[#94A3B8] max-w-xl mx-auto leading-relaxed px-2">
+            Reserve your campus accommodation for Ignitron 2K26. Verified stay allotment is generated immediately upon payment.
           </p>
 
           {/* Stepper (Details → Payment → Confirmed) */}
-          <div className="pt-2 flex items-center justify-center gap-2 sm:gap-4 text-xs font-medium">
-            <div className="flex items-center gap-2 text-[#F7FAFC] font-semibold">
-              <span className="w-6 h-6 rounded-md bg-[#5EE5BC] text-[#0C1D18] flex items-center justify-center text-xs font-bold shadow-[0_0_12px_rgba(94,229,188,0.35)]">
+          <div className="pt-2 flex items-center justify-center gap-1.5 sm:gap-4 text-[11px] sm:text-xs font-medium">
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[#F7FAFC] font-semibold">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#5EE5BC] text-[#0C1D18] flex items-center justify-center text-[10px] sm:text-xs font-bold shadow-[0_0_12px_rgba(94,229,188,0.35)]">
                 1
               </span>
               <span>Details</span>
             </div>
-            <div className="w-8 h-px bg-[#2B2E32]" />
-            <div className="flex items-center gap-2 text-[#94A3B8]">
-              <span className="w-6 h-6 rounded-md bg-[#24262A] border border-[#2B2E32] text-[#94A3B8] flex items-center justify-center text-xs font-medium">
+            <div className="w-4 sm:w-8 h-px bg-[#2B2E32]" />
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[#94A3B8]">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#24262A] border border-[#2B2E32] text-[#94A3B8] flex items-center justify-center text-[10px] sm:text-xs font-medium">
                 2
               </span>
               <span>Payment</span>
             </div>
-            <div className="w-8 h-px bg-[#2B2E32]" />
-            <div className="flex items-center gap-2 text-[#94A3B8]">
-              <span className="w-6 h-6 rounded-md bg-[#24262A] border border-[#2B2E32] text-[#94A3B8] flex items-center justify-center text-xs font-medium">
+            <div className="w-4 sm:w-8 h-px bg-[#2B2E32]" />
+            <div className="flex items-center gap-1.5 sm:gap-2 text-[#94A3B8]">
+              <span className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-[#24262A] border border-[#2B2E32] text-[#94A3B8] flex items-center justify-center text-[10px] sm:text-xs font-medium">
                 3
               </span>
               <span>Confirmed</span>
@@ -263,7 +290,7 @@ export const RegisterPage: React.FC = () => {
         )}
 
         {/* REGISTRATION FORM CARD */}
-        <TiltCard className="p-6 sm:p-10">
+        <TiltCard className="p-4 sm:p-8 md:p-10">
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="text-left border-b border-[#2B2E32] pb-4">
               <h2 className="text-xl font-bold text-[#F7FAFC] font-heading tracking-tight">
@@ -451,6 +478,115 @@ export const RegisterPage: React.FC = () => {
             </div>
           </form>
         </TiltCard>
+
+        {/* HELP & QUERY CONTACT SUPPORT DESK */}
+        <div className="rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_4px_24px_rgba(0,0,0,0.4)] p-6 sm:p-8 space-y-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#2B2E32]">
+            <div className="space-y-1">
+              <div className="inline-flex items-center gap-2 text-xs font-semibold text-[#5EE5BC] uppercase tracking-wider">
+                <HelpCircle className="w-4 h-4 text-[#5EE5BC]" />
+                <span>Accommodation Help Desk</span>
+              </div>
+              <h3 className="text-lg sm:text-xl font-bold font-heading text-[#F7FAFC]">
+                Have queries about hostel allotment?
+              </h3>
+              <p className="text-xs text-[#94A3B8]">
+                Our student coordinators and accommodation staff are available to assist you.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 text-xs text-[#94A3B8] bg-[#24262A] px-3 py-1.5 rounded-md border border-[#2B2E32] w-fit">
+              <Clock className="w-3.5 h-3.5 text-[#5EE5BC]" />
+              <span>Desk Hours: 8:00 AM – 10:00 PM</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Phone Support */}
+            <a
+              href="tel:+919980745913"
+              className="group p-4 rounded-lg bg-[#24262A] border border-[#2B2E32] hover:border-[#5EE5BC]/40 transition-all duration-200 block"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="p-2 rounded-md bg-[#5EE5BC]/10 text-[#5EE5BC] group-hover:scale-110 transition-transform">
+                  <Phone className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-medium text-[#94A3B8]">Helpline &amp; WhatsApp</span>
+              </div>
+              <div className="text-base font-bold text-[#F7FAFC] font-mono group-hover:text-[#5EE5BC] transition-colors">
+                +91 99807 45913
+              </div>
+              <span className="text-[11px] text-[#5EE5BC] font-medium mt-1 inline-flex items-center gap-1">
+                <span>Tap to call / message</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </a>
+
+            {/* Email Support */}
+            <a
+              href="mailto:pavan.b.m1598@gmail.com?subject=Ignitron%202K26%20Hostel%20Accommodation%20Query"
+              className="group p-4 rounded-lg bg-[#24262A] border border-[#2B2E32] hover:border-[#5EE5BC]/40 transition-all duration-200 block"
+            >
+              <div className="flex items-center gap-3 mb-2">
+                <span className="p-2 rounded-md bg-[#5EE5BC]/10 text-[#5EE5BC] group-hover:scale-110 transition-transform">
+                  <Mail className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-medium text-[#94A3B8]">Official Inquiries</span>
+              </div>
+              <div className="text-sm font-bold text-[#F7FAFC] truncate group-hover:text-[#5EE5BC] transition-colors" title="pavan.b.m1598@gmail.com">
+                pavan.b.m1598@gmail.com
+              </div>
+              <span className="text-[11px] text-[#5EE5BC] font-medium mt-1 inline-flex items-center gap-1">
+                <span>Send direct email</span>
+                <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+              </span>
+            </a>
+
+            {/* Campus Desk Location */}
+            <div className="p-4 rounded-lg bg-[#24262A] border border-[#2B2E32] sm:col-span-2 lg:col-span-1">
+              <div className="flex items-center gap-3 mb-2">
+                <span className="p-2 rounded-md bg-[#5EE5BC]/10 text-[#5EE5BC]">
+                  <MapPin className="w-4 h-4" />
+                </span>
+                <span className="text-xs font-medium text-[#94A3B8]">Campus Location</span>
+              </div>
+              <div className="text-xs font-semibold text-[#F7FAFC] leading-snug">
+                Hostel Allocation Center
+              </div>
+              <div className="text-[11px] text-[#94A3B8] mt-0.5">
+                Main Campus Reception &amp; Boys/Girls Blocks
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* REFINED BRAND FOOTER */}
+        <footer className="pt-6 pb-8 border-t border-[#2B2E32] text-center space-y-4">
+          <div className="flex items-center justify-center gap-3">
+            <img
+              src="/ignitron-emblem-aqua.png"
+              alt="Ignitron Emblem"
+              className="h-8 w-auto object-contain drop-shadow-[0_0_12px_rgba(94,229,188,0.25)]"
+            />
+            <span className="font-heading font-black tracking-tight text-[#F7FAFC] text-lg">
+              IGNITRON 2K26
+            </span>
+            <span className="font-mono text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-[#5EE5BC]/15 text-[#5EE5BC] border border-[#5EE5BC]/30">
+              Hostel Desk
+            </span>
+          </div>
+
+          <p className="text-xs text-[#94A3B8] max-w-md mx-auto leading-relaxed">
+            National Level Technical Symposium &amp; Festival · For inquiries contact <a href="mailto:pavan.b.m1598@gmail.com" className="text-[#5EE5BC] hover:underline">pavan.b.m1598@gmail.com</a> or call <a href="tel:+919980745913" className="text-[#5EE5BC] hover:underline">+91 99807 45913</a>.
+          </p>
+
+          <div className="text-[11px] text-[#64748B] flex items-center justify-center gap-2">
+            <span>© 2026 Ignitron Festival. All rights reserved.</span>
+            <span>·</span>
+            <Link to="/admin/login" className="hover:text-[#5EE5BC] transition-colors">
+              Staff Portal
+            </Link>
+          </div>
+        </footer>
       </div>
     </div>
   );

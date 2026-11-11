@@ -78,6 +78,7 @@ export interface PublicRegistration {
   email: string;
   phone: string;
   gender?: string;
+  emergencyContact?: string;
   collegeOrOrganisation?: string;
   checkInDate: string;
   checkOutDate: string;

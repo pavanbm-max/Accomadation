@@ -44,7 +44,7 @@ export const AdminLayout: React.FC = () => {
     <div className="min-h-screen bg-[#151618] flex flex-col md:flex-row transition-colors text-[#F7FAFC]">
       {/* Mobile top bar */}
       <div className="md:hidden flex items-center justify-between p-4 bg-[#1B1D20] border-b border-[#2B2E32]">
-        <LogoPlaceholder size="sm" />
+        <LogoPlaceholder size="sm" showBadge={true} />
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           className="p-2 rounded-md text-[#94A3B8] hover:bg-[#24262A] hover:text-[#F7FAFC]"
@@ -54,6 +54,15 @@ export const AdminLayout: React.FC = () => {
         </button>
       </div>
 
+      {/* Mobile Backdrop Overlay */}
+      {mobileMenuOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/60 backdrop-blur-xs md:hidden"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar Desktop */}
       <aside
         className={`fixed inset-y-0 left-0 z-40 w-64 bg-[#1B1D20] border-r border-[#2B2E32] flex flex-col justify-between transition-transform duration-200 md:static md:translate-x-0 ${
@@ -62,7 +71,7 @@ export const AdminLayout: React.FC = () => {
       >
         <div className="p-6">
           <div className="pb-6 border-b border-[#2B2E32]">
-            <LogoPlaceholder size="md" />
+            <LogoPlaceholder size="md" showBadge={true} />
             <div className="mt-4 flex items-center gap-2">
               <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded-md bg-[#5EE5BC]/10 text-[#5EE5BC] border border-[#5EE5BC]/25">
                 {profile?.role === 'admin' ? 'Hostel admin' : 'Desk volunteer'}
@@ -96,23 +105,29 @@ export const AdminLayout: React.FC = () => {
         </div>
 
         {/* User profile & Sign Out Footer */}
-        <div className="p-4 border-t border-[#2B2E32] flex items-center justify-between">
-          <a
-            href="/"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-[#94A3B8] hover:text-[#5EE5BC] font-medium"
-          >
-            Guest portal ↗
-          </a>
+        <div className="p-4 border-t border-[#2B2E32] space-y-2">
+          <div className="flex items-center justify-between">
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-[#94A3B8] hover:text-[#5EE5BC] font-medium"
+            >
+              Guest portal ↗
+            </a>
 
-          <button
-            onClick={signOut}
-            title="Sign out"
-            className="p-2 text-[#94A3B8] hover:text-[#AB252C] rounded-md hover:bg-[#24262A] transition-colors"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
+            <button
+              onClick={signOut}
+              title="Sign out"
+              className="p-1.5 text-[#94A3B8] hover:text-[#AB252C] rounded-md hover:bg-[#24262A] transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
+          <div className="text-[10px] text-[#64748B] pt-1.5 border-t border-[#2B2E32]/50 flex items-center justify-between">
+            <span>Help Desk:</span>
+            <a href="tel:+919980745913" className="text-[#94A3B8] hover:text-[#5EE5BC] font-mono">+91 99807 45913</a>
+          </div>
         </div>
       </aside>
 

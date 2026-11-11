@@ -246,7 +246,7 @@ export const AdminUsersPage: React.FC = () => {
               className="w-full text-xs p-2.5 rounded-md border border-[#2B2E32] bg-[#24262A] text-[#F7FAFC] focus:outline-none focus:ring-2 focus:ring-[#5EE5BC]"
             >
               <option value="volunteer">Volunteer (Desk QR scanner only, read-only)</option>
-              <option value="admin">Administrator (Full control, desk cash collections, refunds)</option>
+              <option value="admin">Administrator (Full control, desk settlements, registrations CRUD)</option>
             </select>
           </div>
 

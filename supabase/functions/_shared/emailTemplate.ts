@@ -19,17 +19,18 @@ export interface EmailTemplateData {
   transactionId: string;
   paidDate: string;
   paymentMethod: string;
-  refundPolicyText: string;
+  refundPolicyText?: string;
   supportEmail?: string;
   supportPhone?: string;
 }
 
 export function buildConfirmationEmailHtml(data: EmailTemplateData): string {
   const firstName = data.firstName || data.fullName.split(' ')[0] || 'Guest';
-  const hostelName = data.hostelName || 'Hostel Accommodation Desk';
+  const hostelName = data.hostelName || 'Ignitron Hostel Accommodation Desk';
   const supportEmail = data.supportEmail || 'pavan.b.m1598@gmail.com';
-  const supportPhone = data.supportPhone || '+91 98765 43210';
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(data.scanUrl)}`;
+  const supportPhone = data.supportPhone || '+91 99807 45913';
+  // High-availability CDN-cached QR code service with Google Image Proxy & Outlook compatibility
+  const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(data.scanUrl)}&size=220&ecLevel=H&margin=1`;
   
   const rateFormatted = `₹${Number(data.ratePerNight).toLocaleString('en-IN')}`;
   const nightsTotal = `₹${(data.nights * Number(data.ratePerNight)).toLocaleString('en-IN')}`;
@@ -193,13 +194,24 @@ export function buildConfirmationEmailHtml(data: EmailTemplateData): string {
                 <td align="center" class="bg-soft" style="background-color:#EEF5F6;border-radius:20px;padding:28px 20px;">
                   <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                     <tr>
-                      <td class="qr-wrap" align="center" style="background-color:#FFFFFF;border-radius:16px;padding:14px;border:1px solid #D5E3E6;">
-                        <img class="qr" src="${qrCodeUrl}" width="200" height="200" alt="Check-in QR code for ${data.referenceId}" style="width:200px;height:200px;">
+                      <td class="qr-wrap" align="center" style="background-color:#FFFFFF;border-radius:16px;padding:16px;border:1px solid #D5E3E6;">
+                        <img class="qr" src="${qrCodeUrl}" width="200" height="200" alt="Check-in QR code for ${data.referenceId}" style="width:200px;height:200px;display:block;">
                       </td>
                     </tr>
                   </table>
-                  <div class="txt" style="padding-top:16px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;font-weight:600;color:#10272E;">Show this QR code at the desk</div>
-                  <div class="txt-muted" style="padding-top:4px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:19px;color:#5E7C84;">Direct check-in pass: <a href="${data.scanUrl}" style="color:#0F4C5C;text-decoration:underline;">Open Digital Pass</a></div>
+                  <div class="txt" style="padding-top:16px;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif;font-size:16px;font-weight:700;color:#10272E;">Show this QR code at the accommodation desk</div>
+                  <div class="txt-muted" style="padding-top:4px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:19px;color:#5E7C84;">Booking Reference: <strong style="font-family:'Courier New',Courier,monospace;color:#10272E;font-size:14px;">${data.referenceId}</strong></div>
+                  
+                  <!-- Primary Action Button: Opens the live digital pass -->
+                  <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:16px;">
+                    <tr>
+                      <td align="center" style="background-color:#0F4C5C;border-radius:8px;padding:12px 24px;">
+                        <a href="${data.scanUrl}" style="color:#FFFFFF;text-decoration:none;font-family:'Plus Jakarta Sans',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;display:inline-block;">
+                          Open Digital Boarding Pass &amp; QR &rarr;
+                        </a>
+                      </td>
+                    </tr>
+                  </table>
                 </td>
               </tr>
             </table>
@@ -244,15 +256,6 @@ export function buildConfirmationEmailHtml(data: EmailTemplateData): string {
                       <td class="txt" style="padding:3px 0;color:#10272E;">${data.paymentMethod}</td>
                     </tr>
                   </table>
-                </td>
-              </tr>
-            </table>
-
-            <!-- Refund policy -->
-            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:24px;">
-              <tr>
-                <td class="txt-muted" style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:20px;color:#5E7C84;">
-                  <strong class="txt" style="color:#10272E;">Refund policy:</strong> ${data.refundPolicyText}
                 </td>
               </tr>
             </table>

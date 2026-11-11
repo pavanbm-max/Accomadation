@@ -95,8 +95,8 @@ serve(async (req: Request) => {
       });
     }
 
-    const origin = req.headers.get('origin') || 'http://localhost:5173';
-    const scanUrl = `${origin}/scan/${reg.scan_token}`;
+    const origin = Deno.env.get('PUBLIC_APP_URL') || Deno.env.get('SITE_URL') || req.headers.get('origin') || 'http://localhost:5173';
+    const scanUrl = `${origin}/confirmation/${reg.scan_token}`;
 
     const paidDate = reg.paid_at 
       ? new Date(reg.paid_at).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })

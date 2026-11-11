@@ -33,9 +33,9 @@ export const AdminLoginPage: React.FC = () => {
   return (
     <div className="page-ambient-bg min-h-[calc(100vh-4rem)] flex items-center justify-center p-4 bg-[#151618] text-[#F7FAFC]">
       <div className="w-full max-w-md rounded-lg bg-[#1B1D20] border border-[#2B2E32] shadow-[0_8px_32px_rgba(0,0,0,0.5)] p-6 sm:p-8 space-y-6">
-        <div className="text-center space-y-2">
-          <LogoPlaceholder size="md" className="mx-auto" />
-          <h2 className="text-2xl font-bold text-[#F7FAFC] font-heading tracking-tight pt-2">
+        <div className="text-center space-y-3">
+          <LogoPlaceholder size="md" variant="stacked" showBadge={true} className="mx-auto" />
+          <h2 className="text-xl font-bold text-[#F7FAFC] font-heading tracking-tight pt-1">
             Staff &amp; desk login
           </h2>
           <p className="text-xs text-[#94A3B8]">
@@ -88,8 +88,11 @@ export const AdminLoginPage: React.FC = () => {
           </button>
         </form>
 
-        <div className="text-center text-xs text-[#94A3B8]">
-          Accounts are managed in Supabase Auth by the hostel administration.
+        <div className="pt-3 border-t border-[#2B2E32] text-center space-y-1.5 text-xs text-[#94A3B8]">
+          <div>Accounts are managed by the hostel administration.</div>
+          <div className="text-[11px] text-[#64748B]">
+            Need desk credentials? Contact: <a href="tel:+919980745913" className="text-[#5EE5BC] hover:underline">+91 99807 45913</a> · <a href="mailto:pavan.b.m1598@gmail.com" className="text-[#5EE5BC] hover:underline">pavan.b.m1598@gmail.com</a>
+          </div>
         </div>
       </div>
     </div>
